@@ -1,0 +1,60 @@
+{
+  "name": "@struktos/cli",
+  "version": "0.1.0",
+  "description": "CLI tool for creating and managing Struktos.js projects",
+  "main": "dist/index.js",
+  "bin": {
+    "struktos": "bin/struktos.js"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "dev": "tsx src/index.ts",
+    "test": "struktos new test-project"
+  },
+  "keywords": [
+    "struktos",
+    "cli",
+    "generator",
+    "scaffold",
+    "hexagonal-architecture",
+    "enterprise",
+    "typescript"
+  ],
+  "author": "Struktos.js Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/struktosjs/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/struktosjs/cli/issues"
+  },
+  "homepage": "https://github.com/struktosjs/cli#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^12.1.0",
+    "fs-extra": "^11.2.0",
+    "inquirer": "^8.2.6",
+    "ora": "^5.4.1"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/inquirer": "^8.2.10",
+    "@types/node": "^24.10.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
