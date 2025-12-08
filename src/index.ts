@@ -2,6 +2,7 @@
 
 import { Command } from 'commander';
 import { createNewCommand } from './commands/new';
+import { createGenerateCommand } from './commands/generate';
 
 const program = new Command();
 
@@ -12,6 +13,7 @@ program
 
 // Register commands
 program.addCommand(createNewCommand());
+program.addCommand(createGenerateCommand());
 
 // Parse arguments
 program.parse(process.argv);

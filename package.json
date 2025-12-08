@@ -1,6 +1,6 @@
 {
   "name": "@struktos/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "CLI tool for creating and managing Struktos.js projects",
   "main": "dist/index.js",
   "bin": {
@@ -31,12 +31,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/struktosjs/cli"
+    "url": "https://github.com/struktos/struktos-cli"
   },
   "bugs": {
-    "url": "https://github.com/struktosjs/cli/issues"
+    "url": "https://github.com/struktos/struktos-cli/issues"
   },
-  "homepage": "https://github.com/struktosjs/cli#readme",
+  "homepage": "https://github.com/struktos/struktos-cli#readme",
   "engines": {
     "node": ">=18.0.0"
   },
