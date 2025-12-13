@@ -64,10 +64,10 @@ program.on('--help', () => {
 
 // Error handling
 program.exitOverride((err) => {
-  if (err.code === 'commander.help') {
+  if (err.code === 'commander.help' || err.code === 'commander.helpDisplayed') {
     process.exit(0);
   }
-  if (err.code === 'commander.version') {
+  if (err.code === 'commander.version' || err.code === 'commander.versionDisplayed') {
     process.exit(0);
   }
   console.error(chalk.red(`Error: ${err.message}`));
@@ -80,5 +80,5 @@ program.parse(process.argv);
 // Show help if no command provided
 if (process.argv.length === 2) {
   console.log(banner);
-  program.outputHelp();
+  program.help();
 }
