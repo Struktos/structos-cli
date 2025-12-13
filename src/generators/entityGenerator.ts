@@ -1,4 +1,5 @@
-import { FieldDefinition, toPascalCase } from '../utils/fieldParser';
+import { toPascalCase } from '../utils/fieldParser';
+import { FieldDefinition } from "../types"
 
 /**
  * Generate Domain Entity file content

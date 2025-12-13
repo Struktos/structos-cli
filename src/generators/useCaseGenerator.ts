@@ -1,4 +1,5 @@
-import { FieldDefinition, toPascalCase, toCamelCase } from '../utils/fieldParser';
+import { toPascalCase, toCamelCase } from '../utils/fieldParser';
+import { FieldDefinition } from "../types"
 
 /**
  * Generate Create Use Case file content
