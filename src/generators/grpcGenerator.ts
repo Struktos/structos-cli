@@ -307,21 +307,25 @@ export function generateServiceRegistration(serviceName: string): string {
  */
 
 import * as path from 'path';
-import { register${pascal}Service } from './infrastructure/adapters/grpc/${kebab}.service.grpc';
+import { GrpcStruktosAdapter, createGrpcAdapter } from '@struktos/adapter-grpc';
+import { register${pascal}Service } from './${kebab}.service.grpc';
 
-// In your main setup function:
-async function registerGrpcServices(adapter: GrpcStruktosAdapter): Promise<void> {
-  const protoPath = path.join(__dirname, '../protos/${kebab}.proto');
+/**
+ * Register all gRPC services
+ * Call this function in your main.ts before starting the server
+ */
+export async function register${pascal}GrpcService(adapter: GrpcStruktosAdapter): Promise<void> {
+  // Proto file is located at project root /protos directory
+  const protoPath = path.join(process.cwd(), 'protos/${kebab}.proto');
   
   await register${pascal}Service(adapter, protoPath);
-  
-  // Add more services here...
 }
 
 // Example usage in main.ts:
 /*
 import { StruktosApp } from '@struktos/core';
 import { createGrpcAdapter } from '@struktos/adapter-grpc';
+import { register${pascal}GrpcService } from './infrastructure/adapters/grpc/${kebab}.registration';
 
 async function main() {
   const app = StruktosApp.create({ name: '${kebab}-service' });
@@ -330,7 +334,7 @@ async function main() {
     enableCancellation: true,
   });
   
-  await registerGrpcServices(adapter);
+  await register${pascal}GrpcService(adapter);
   
   await app.listen(adapter, 50051);
   console.log('gRPC server running on port 50051');

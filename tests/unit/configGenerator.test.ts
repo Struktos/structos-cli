@@ -244,8 +244,17 @@ describe('configGenerator', () => {
       
       expect(parsed.coreImports).toBeDefined();
       expect(parsed.coreImports.RequestContext).toBe('@struktos/core');
-      expect(parsed.coreImports.IInterceptor).toBe('@struktos/core');
+      expect(parsed.coreImports.IStruktosMiddleware).toBe('@struktos/core');
       expect(parsed.coreImports.ILogger).toBe('@struktos/core');
+    });
+
+    it('should include adapterImports', () => {
+      const result = generateMetadataConfig(baseConfig);
+      const parsed = JSON.parse(result);
+      
+      expect(parsed.adapterImports).toBeDefined();
+      expect(parsed.adapterImports.GrpcStruktosAdapter).toBe('@struktos/adapter-grpc');
+      expect(parsed.adapterImports.createGrpcAdapter).toBe('@struktos/adapter-grpc');
     });
 
     it('should include project paths', () => {

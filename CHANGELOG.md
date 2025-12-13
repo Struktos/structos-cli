@@ -2,7 +2,49 @@
 
 All notable changes to `@struktos/cli` will be documented in this file.
 
-## [0.3.2] - 2025-12-13
+## [0.3.3] - 2025-12-14
+
+### 🐛 Bug Fixes
+
+#### Entity Generation - `id` Field Duplication Fixed
+- **Issue**: `generate entity Product --fields="name:string,price:number"` produced duplicate `id` fields
+- **Root Cause**: CLI was adding `id` to fields array, but template also hardcoded `id`
+- **Fix**: CLI now filters out reserved fields (`id`, `createdAt`, `updatedAt`) before passing to template
+- **Result**: Clean entity with no duplicate constructor parameters
+
+#### Entity Generation - `static create()` Method Fixed
+- **Issue**: `static create()` had incorrect parameter count (missing trailing comma handling)
+- **Fix**: Proper handling of field params with clean formatting
+
+#### gRPC Registration - Import Path Fixed
+- **Issue**: `import { registerOrderService } from './infrastructure/adapters/grpc/order.service.grpc'`
+- **Should Be**: `import { registerOrderService } from './order.service.grpc'` (same directory)
+- **Fix**: Changed to correct relative path for same-directory imports
+
+#### gRPC Registration - Adapter Type Fixed  
+- **Issue**: Used undefined `GrpcAdapter` type
+- **Fix**: Now uses actual `GrpcStruktosAdapter` from `@struktos/adapter-grpc`
+
+#### Metadata Configuration - Type Names Updated
+- Updated `generateMetadataConfig()` to use correct @struktos/core types:
+  - `IStruktosMiddleware` (was `IInterceptor`)
+  - `MiddlewareContext` (was not included)
+  - `NextFunction` (was `NextFn`)
+- Added `adapterImports` section with `GrpcStruktosAdapter` and `createGrpcAdapter`
+
+### Changed
+
+- `metadata-reader.ts`: Added `AdapterImports` interface
+- `configGenerator.ts`: Updated `generateMetadataConfig()` with correct types
+- Tests: Added `adapterImports` test case
+
+### Statistics
+- Tests: 168 passing (+1 new test)
+- Bug fixes: 4 issues resolved
+
+---
+
+## [0.3.1] - 2025-12-13
 
 ### 🐛 Bug Fixes & Improvements
 

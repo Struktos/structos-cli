@@ -22,6 +22,14 @@ export interface CoreImports {
 }
 
 /**
+ * Adapter import paths configuration
+ */
+export interface AdapterImports {
+  GrpcStruktosAdapter: string;
+  createGrpcAdapter: string;
+}
+
+/**
  * Project structure paths
  */
 export interface ProjectPaths {
@@ -55,6 +63,7 @@ export interface StruktosMetadata {
   version: string;
   framework: 'express' | 'fastify' | 'nestjs' | 'grpc';
   coreImports: CoreImports;
+  adapterImports: AdapterImports;
   paths: ProjectPaths;
   options?: {
     useAuth?: boolean;
@@ -76,6 +85,10 @@ const DEFAULT_METADATA: StruktosMetadata = {
     MiddlewareContext: '@struktos/core',
     IGrpcClientFactory: '@struktos/core',
     GrpcContextData: '@struktos/adapter-grpc',
+  },
+  adapterImports: {
+    GrpcStruktosAdapter: '@struktos/adapter-grpc',
+    createGrpcAdapter: '@struktos/adapter-grpc',
   },
   paths: {
     domain: {
@@ -154,6 +167,10 @@ function mergeMetadata(
     coreImports: {
       ...defaults.coreImports,
       ...overrides.coreImports,
+    },
+    adapterImports: {
+      ...defaults.adapterImports,
+      ...overrides.adapterImports,
     },
     paths: {
       domain: {

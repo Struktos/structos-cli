@@ -17,7 +17,7 @@ import chalk from 'chalk';
 import { createNewCommand } from './commands/new';
 import { createGenerateCommand } from './commands/generate';
 
-const VERSION = '0.3.0';
+const VERSION = '0.3.3';
 
 // ASCII Art Banner
 const banner = `

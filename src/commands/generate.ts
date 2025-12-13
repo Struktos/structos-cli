@@ -150,19 +150,19 @@ async function generateEntity(entityName: string, fieldsInput?: string): Promise
     process.exit(1);
   }
 
-  // Parse fields
+  // Parse fields and filter out reserved fields (id, createdAt, updatedAt)
+  // These are handled automatically by the entity template
+  const reservedFields = ['id', 'createdat', 'updatedat'];
   let fields = fieldsInput ? parseFields(fieldsInput) : [];
-  const hasIdField = fields.some((f) => f.name.toLowerCase() === 'id');
-  if (!hasIdField) {
-    fields = [{ name: 'id', type: 'string', optional: false }, ...fields];
-  }
+  fields = fields.filter((f) => !reservedFields.includes(f.name.toLowerCase()));
 
   const className = toPascalCase(entityName);
   const kebabName = toKebabCase(entityName);
 
   console.log(chalk.bold('📋 Generation Plan:'));
   console.log(`   Entity: ${chalk.cyan(className)}`);
-  console.log(`   Fields: ${fields.length}`);
+  console.log(`   Custom Fields: ${fields.length}`);
+  console.log(chalk.gray('   (id, createdAt, updatedAt are added automatically)'));
   fields.forEach((f) => {
     console.log(`      - ${f.name}: ${f.type}${f.optional ? '?' : ''}`);
   });
@@ -391,7 +391,10 @@ function generateEntityFile(className: string, fields: FieldDefinition[]): strin
     'data.updatedAt ? new Date(data.updatedAt as string) : new Date(),',
   ].join('\n      ');
 
-  const createParams = fields.map((f) => `data.${f.name} as ${f.type},`).join('\n        ');
+  // static create: id는 자동 생성, 나머지 필드는 data에서 가져옴
+  const createFieldParams = fields.length > 0 
+    ? fields.map((f) => `        data.${f.name} as ${f.type},`).join('\n') + '\n'
+    : '';
 
   return `/**
  * ${className} Entity
@@ -427,8 +430,7 @@ ${constructorParams}
   static create(data: Omit<Record<string, unknown>, 'id' | 'createdAt' | 'updatedAt'>): ${className} {
     return new ${className}(
         crypto.randomUUID(),
-        ${createParams}
-    );
+${createFieldParams}    );
   }
 }
 `;

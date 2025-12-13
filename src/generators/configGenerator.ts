@@ -361,11 +361,16 @@ export function generateMetadataConfig(config: ProjectConfig): string {
     framework: config.framework,
     coreImports: {
       RequestContext: '@struktos/core',
-      IInterceptor: '@struktos/core',
+      IStruktosMiddleware: '@struktos/core',
+      MiddlewareContext: '@struktos/core',
+      NextFunction: '@struktos/core',
       ILogger: '@struktos/core',
-      NextFn: '@struktos/core',
       IGrpcClientFactory: '@struktos/core',
       GrpcContextData: config.framework === 'grpc' ? '@struktos/adapter-grpc' : '@struktos/core',
+    },
+    adapterImports: {
+      GrpcStruktosAdapter: '@struktos/adapter-grpc',
+      createGrpcAdapter: '@struktos/adapter-grpc',
     },
     paths: {
       domain: {

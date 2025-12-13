@@ -144,7 +144,7 @@ function registerHelpers(): void {
 
   /**
    * timestamp helper
-   * Usage: {{timestamp}} -> 2024-12-11
+   * Usage: {{timestamp}} -> 2025-12-11
    */
   Handlebars.registerHelper('timestamp', (): string => {
     return new Date().toISOString().split('T')[0];
