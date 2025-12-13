@@ -8,6 +8,7 @@ import {
   generateDockerfile,
   generateDockerCompose,
   generateReadme,
+  generateMetadataConfig,
 } from '../../src/generators/configGenerator';
 import { ProjectConfig } from '../../src/types';
 
@@ -216,6 +217,62 @@ describe('configGenerator', () => {
 
       expect(result).toContain('db:generate');
       expect(result).toContain('db:push');
+    });
+  });
+
+  describe('generateMetadataConfig', () => {
+    it('should generate valid JSON', () => {
+      const result = generateMetadataConfig(baseConfig);
+      expect(() => JSON.parse(result)).not.toThrow();
+    });
+
+    it('should include version', () => {
+      const result = generateMetadataConfig(baseConfig);
+      const parsed = JSON.parse(result);
+      expect(parsed.version).toBe('1.0.0');
+    });
+
+    it('should include framework', () => {
+      const result = generateMetadataConfig(baseConfig);
+      const parsed = JSON.parse(result);
+      expect(parsed.framework).toBe('express');
+    });
+
+    it('should include coreImports', () => {
+      const result = generateMetadataConfig(baseConfig);
+      const parsed = JSON.parse(result);
+      
+      expect(parsed.coreImports).toBeDefined();
+      expect(parsed.coreImports.RequestContext).toBe('@struktos/core');
+      expect(parsed.coreImports.IInterceptor).toBe('@struktos/core');
+      expect(parsed.coreImports.ILogger).toBe('@struktos/core');
+    });
+
+    it('should include project paths', () => {
+      const result = generateMetadataConfig(baseConfig);
+      const parsed = JSON.parse(result);
+      
+      expect(parsed.paths).toBeDefined();
+      expect(parsed.paths.domain.entities).toBe('src/domain/entities');
+      expect(parsed.paths.application.useCases).toBe('src/application/use-cases');
+      expect(parsed.paths.infrastructure.middleware).toBe('src/infrastructure/middleware');
+    });
+
+    it('should include options with useAuth', () => {
+      const config: ProjectConfig = { ...baseConfig, useAuth: true };
+      const result = generateMetadataConfig(config);
+      const parsed = JSON.parse(result);
+      
+      expect(parsed.options.useAuth).toBe(true);
+    });
+
+    it('should use adapter-grpc for gRPC framework', () => {
+      const config: ProjectConfig = { ...baseConfig, framework: 'grpc' };
+      const result = generateMetadataConfig(config);
+      const parsed = JSON.parse(result);
+      
+      expect(parsed.framework).toBe('grpc');
+      expect(parsed.coreImports.GrpcContextData).toBe('@struktos/adapter-grpc');
     });
   });
 });

@@ -20,6 +20,7 @@ import {
   generateDockerfile,
   generateDockerCompose,
   generateReadme,
+  generateMetadataConfig,
 } from '../generators';
 import { ADAPTERS } from '../types';
 
@@ -114,6 +115,15 @@ async function createProject(defaultName?: string): Promise<void> {
       path.join(projectPath, '.env')
     );
     spinner.succeed('Generated environment files');
+
+    // Generate struktos.metadata.json
+    spinner.start('Generating struktos.metadata.json...');
+    await fs.ensureDir(path.join(projectPath, 'config'));
+    await fs.writeFile(
+      path.join(projectPath, 'config/struktos.metadata.json'),
+      generateMetadataConfig(config)
+    );
+    spinner.succeed('Generated metadata configuration');
 
     // Generate .gitignore
     spinner.start('Generating .gitignore...');

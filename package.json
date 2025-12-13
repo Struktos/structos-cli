@@ -13,7 +13,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run copy:templates",
+    "copy:templates": "cp -r src/templates dist/",
     "prepublishOnly": "npm run build",
     "dev": "tsx src/index.ts",
     "test": "jest --runInBand",
@@ -59,6 +60,7 @@
     "chalk": "^4.1.2",
     "commander": "^12.1.0",
     "fs-extra": "^11.2.0",
+    "handlebars": "^4.7.8",
     "inquirer": "^8.2.6",
     "ora": "^5.4.1"
   },

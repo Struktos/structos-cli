@@ -2,7 +2,7 @@
 
 All notable changes to `@struktos/cli` will be documented in this file.
 
-## [0.3.0] - 2025-12-11
+## [0.3.0] - 2025-12-13
 
 ### 🎉 Major Release - Pure TypeScript Generators
 
@@ -87,13 +87,30 @@ src/application/ports/grpc/<service>.client.port.ts  (with --with-port)
 - Explicit constructor dependency injection
 - Interface-based contracts for all components
 - Factory functions provided for all classes
+- **NEW**: Handlebars template engine for code generation
+- **NEW**: `config/struktos.metadata.json` for path resolution
+
+### Architecture Improvements
+
+#### Handlebars Template Engine
+- All generators now use `.hbs` templates in `src/templates/`
+- Custom Handlebars helpers: `importPath`, `camelCase`, `pascalCase`, `kebabCase`, `snakeCase`, `pluralize`
+- Template caching for improved performance
+- Separation of template logic from generator logic
+
+#### Metadata-Based Path Resolution
+- `config/struktos.metadata.json` generated for each project
+- Contains import paths and project structure information
+- Enables accurate relative import path calculation
+- Supports framework-specific configurations
 
 ### Statistics
 - New commands: 3 (`generate middleware`, `generate use-case`, `generate client`)
 - New generators: 5 (middleware, logging, timing, use-case, client)
-- New tests: 33
-- Total tests: 160
-- Lines of code added: ~2,000
+- New tests: 40
+- Total tests: 167
+- Handlebars templates: 5 (middleware/default, middleware/logging, middleware/timing, use-case/default, client/adapter, client/port)
+- Lines of code added: ~2,500
 
 ---
 
@@ -185,7 +202,7 @@ For `struktos generate service user --type=grpc`:
 
 ---
 
-## [0.1.0] - 2025-12-07
+## [0.1.0] - 2024-12-07
 
 ### Added
 - Initial release

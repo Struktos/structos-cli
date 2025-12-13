@@ -350,3 +350,51 @@ MIT
 
   return readme;
 }
+
+/**
+ * Generate struktos.metadata.json configuration file
+ * Used by generators to resolve import paths and understand project structure
+ */
+export function generateMetadataConfig(config: ProjectConfig): string {
+  const metadata = {
+    version: '1.0.0',
+    framework: config.framework,
+    coreImports: {
+      RequestContext: '@struktos/core',
+      IInterceptor: '@struktos/core',
+      ILogger: '@struktos/core',
+      NextFn: '@struktos/core',
+      IGrpcClientFactory: '@struktos/core',
+      GrpcContextData: config.framework === 'grpc' ? '@struktos/adapter-grpc' : '@struktos/core',
+    },
+    paths: {
+      domain: {
+        entities: 'src/domain/entities',
+        repositories: 'src/domain/repositories',
+        services: 'src/domain/services',
+      },
+      application: {
+        useCases: 'src/application/use-cases',
+        ports: {
+          grpc: 'src/application/ports/grpc',
+          http: 'src/application/ports/http',
+        },
+      },
+      infrastructure: {
+        adapters: {
+          grpc: 'src/infrastructure/adapters/grpc',
+          http: 'src/infrastructure/adapters/http',
+          persistence: 'src/infrastructure/adapters/persistence',
+        },
+        middleware: 'src/infrastructure/middleware',
+      },
+      protos: 'protos',
+    },
+    options: {
+      useAuth: config.useAuth,
+      persistence: config.persistence,
+    },
+  };
+
+  return JSON.stringify(metadata, null, 2);
+}
