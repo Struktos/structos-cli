@@ -13,9 +13,10 @@ import path from 'path';
  */
 export interface CoreImports {
   RequestContext: string;
-  IInterceptor: string;
+  IStruktosMiddleware: string;
   ILogger: string;
-  NextFn: string;
+  NextFunction: string;
+  MiddlewareContext: string;
   IGrpcClientFactory: string;
   GrpcContextData: string;
 }
@@ -69,9 +70,10 @@ const DEFAULT_METADATA: StruktosMetadata = {
   framework: 'express',
   coreImports: {
     RequestContext: '@struktos/core',
-    IInterceptor: '@struktos/core',
+    IStruktosMiddleware: '@struktos/core',
     ILogger: '@struktos/core',
-    NextFn: '@struktos/core',
+    NextFunction: '@struktos/core',
+    MiddlewareContext: '@struktos/core',
     IGrpcClientFactory: '@struktos/core',
     GrpcContextData: '@struktos/adapter-grpc',
   },

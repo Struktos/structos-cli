@@ -1,7 +1,7 @@
 /**
- * Middleware (Interceptor) Generator
+ * Middleware Generator
  * 
- * Uses Handlebars templates for generating interceptor files.
+ * Uses Handlebars templates for generating middleware files.
  */
 
 import path from 'path';
@@ -18,14 +18,15 @@ export interface MiddlewareTemplateData {
   withLogger?: boolean;
   currentFilePath: string;
   coreImports: {
-    IInterceptor: string;
-    RequestContext: string;
+    IStruktosMiddleware: string;
+    MiddlewareContext: string;
+    NextFunction: string;
     ILogger: string;
   };
 }
 
 /**
- * Generate a middleware/interceptor file using Handlebars template
+ * Generate a middleware file using Handlebars template
  */
 export function generateMiddleware(name: string, options?: { withLogger?: boolean }): string {
   const renderer = new TemplateRenderer();
@@ -34,7 +35,7 @@ export function generateMiddleware(name: string, options?: { withLogger?: boolea
   const className = toPascalCase(name);
   const currentFilePath = path.join(
     metadata.paths.infrastructure.middleware,
-    `${toKebabCase(name)}.interceptor.ts`
+    `${toKebabCase(name)}.middleware.ts`
   );
 
   const data: MiddlewareTemplateData = {
@@ -49,7 +50,7 @@ export function generateMiddleware(name: string, options?: { withLogger?: boolea
 }
 
 /**
- * Generate logging interceptor using Handlebars template
+ * Generate logging middleware using Handlebars template
  */
 export function generateLoggingMiddleware(): string {
   const renderer = new TemplateRenderer();
@@ -57,7 +58,7 @@ export function generateLoggingMiddleware(): string {
   
   const currentFilePath = path.join(
     metadata.paths.infrastructure.middleware,
-    'logging.interceptor.ts'
+    'logging.middleware.ts'
   );
 
   return renderer.render('middleware/logging', {
@@ -67,7 +68,7 @@ export function generateLoggingMiddleware(): string {
 }
 
 /**
- * Generate timing interceptor using Handlebars template
+ * Generate timing middleware using Handlebars template
  */
 export function generateTimingMiddleware(): string {
   const renderer = new TemplateRenderer();
@@ -75,7 +76,7 @@ export function generateTimingMiddleware(): string {
   
   const currentFilePath = path.join(
     metadata.paths.infrastructure.middleware,
-    'timing.interceptor.ts'
+    'timing.middleware.ts'
   );
 
   return renderer.render('middleware/timing', {

@@ -2,7 +2,65 @@
 
 All notable changes to `@struktos/cli` will be documented in this file.
 
-## [0.3.0] - 2025-12-13
+## [0.3.2] - 2025-12-13
+
+### 🐛 Bug Fixes & Improvements
+
+This patch release fixes critical bugs and aligns generated code with @struktos/core interfaces.
+
+### Fixed
+
+#### `generate entity` - Fixed `this.` Missing in `toObject()`
+- **Issue**: Generated entity's `toObject()` method was missing `this.` prefix for fields
+- **Before**: `return { name, price }` (runtime error)
+- **After**: `return { id: this.id, name: this.name, ... }`
+- Added `id`, `createdAt`, `updatedAt` fields automatically
+- Added `static create()` factory method for DDD pattern
+
+#### `generate client` - Fixed Validation Error for Kebab-Case Names
+- **Issue**: `struktos g client inventory-service` failed with "invalid entity name"
+- **Fix**: Added `validateServiceName()` that allows kebab-case (`inventory-service`), snake_case (`inventory_service`), and PascalCase (`InventoryService`)
+
+#### `generate middleware` - Fixed Core Type Alignment
+- **Issue**: Generated interceptors used non-existent `IInterceptor` and RxJS Observable pattern
+- **Fix**: Updated to use actual @struktos/core interfaces:
+  - `IStruktosMiddleware` instead of `IInterceptor`
+  - `NextFunction` instead of `NextFn`
+  - `MiddlewareContext` instead of `RequestContext`
+  - Promise-based `invoke()` instead of RxJS Observable `intercept()`
+
+### Changed
+
+#### Middleware Template Overhaul
+- Renamed from `.interceptor.ts` to `.middleware.ts`
+- Changed class naming from `*Interceptor` to `*Middleware`
+- Replaced RxJS `Observable` pattern with async/await `Promise<void>`
+- Updated factory functions: `createAuthMiddleware()` instead of `createAuthInterceptor()`
+
+#### Entity Template Enhancement
+- Added `id: string` field automatically
+- Added `createdAt: Date` and `updatedAt: Date` fields
+- Added `static create(data)` factory method
+- `static fromObject()` now properly handles Date fields
+
+#### Use Case Template Update
+- Uses entity's `static create()` method instead of inline `crypto.randomUUID()`
+- Cleaner separation of concerns
+
+### Updated
+
+- `metadata-reader.ts`: Updated `CoreImports` interface with correct type names
+- `DEFAULT_METADATA`: Uses `IStruktosMiddleware`, `NextFunction`, `MiddlewareContext`
+- Tests: Updated 167 tests to match new patterns
+
+### Statistics
+- Bug fixes: 3 critical issues resolved
+- Tests: 167 passing
+- No breaking changes to CLI commands
+
+---
+
+## [0.3.0] - 2025-12-11
 
 ### 🎉 Major Release - Pure TypeScript Generators
 
@@ -202,7 +260,7 @@ For `struktos generate service user --type=grpc`:
 
 ---
 
-## [0.1.0] - 2024-12-07
+## [0.1.0] - 2025-12-07
 
 ### Added
 - Initial release

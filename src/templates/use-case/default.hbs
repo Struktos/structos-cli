@@ -179,12 +179,8 @@ export class {{action}}{{entity}}UseCase {
 {{#if (eq actionLower "create")}}
       // Create entity
 {{#if needsRepository}}
-      const entity = {{entity}}.create({
-        ...input,
-        id: crypto.randomUUID(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+      // Use entity's static create factory (auto-generates ID and timestamps)
+      const entity = {{entity}}.create(input);
 
       const saved = await this.{{entityLower}}Repository.create(entity);
 

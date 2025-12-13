@@ -13,6 +13,7 @@ import fs from 'fs-extra';
 import {
   parseFields,
   validateEntityName,
+  validateServiceName,
   toPascalCase,
   toCamelCase,
   toKebabCase,
@@ -218,8 +219,8 @@ async function generateService(
 ): Promise<void> {
   console.log(chalk.bold.cyan('\n🔧 Struktos Code Generator - Service\n'));
 
-  // Validate
-  validateEntityName(serviceName);
+  // Validate (allows kebab-case for service names)
+  validateServiceName(serviceName);
 
   // Check if in Struktos project
   if (!(await isStruktosProject())) {
@@ -369,9 +370,28 @@ async function generateHttpService(serviceName: string, methods: string[]): Prom
 // ==================== Helper Generators ====================
 
 function generateEntityFile(className: string, fields: FieldDefinition[]): string {
-  const constructorParams = fields
-    .map((f) => `    public readonly ${f.name}${f.optional ? '?' : ''}: ${f.type},`)
-    .join('\n');
+  const constructorParams = [
+    '    public readonly id: string,',
+    ...fields.map((f) => `    public readonly ${f.name}${f.optional ? '?' : ''}: ${f.type},`),
+    '    public readonly createdAt: Date = new Date(),',
+    '    public readonly updatedAt: Date = new Date(),',
+  ].join('\n');
+
+  const toObjectFields = [
+    'id: this.id,',
+    ...fields.map((f) => `${f.name}: this.${f.name},`),
+    'createdAt: this.createdAt,',
+    'updatedAt: this.updatedAt,',
+  ].join('\n      ');
+
+  const fromObjectParams = [
+    'data.id as string,',
+    ...fields.map((f) => `data.${f.name} as ${f.type},`),
+    'data.createdAt ? new Date(data.createdAt as string) : new Date(),',
+    'data.updatedAt ? new Date(data.updatedAt as string) : new Date(),',
+  ].join('\n      ');
+
+  const createParams = fields.map((f) => `data.${f.name} as ${f.type},`).join('\n        ');
 
   return `/**
  * ${className} Entity
@@ -383,15 +403,31 @@ export class ${className} {
 ${constructorParams}
   ) {}
 
+  /**
+   * Convert entity to plain object
+   */
   toObject(): Record<string, unknown> {
     return {
-      ${fields.map((f) => f.name).join(',\n      ')},
+      ${toObjectFields}
     };
   }
 
+  /**
+   * Create entity from plain object
+   */
   static fromObject(data: Record<string, unknown>): ${className} {
     return new ${className}(
-      ${fields.map((f) => `data.${f.name} as ${f.type}`).join(',\n      ')},
+      ${fromObjectParams}
+    );
+  }
+
+  /**
+   * Create a new entity with auto-generated ID
+   */
+  static create(data: Omit<Record<string, unknown>, 'id' | 'createdAt' | 'updatedAt'>): ${className} {
+    return new ${className}(
+        crypto.randomUUID(),
+        ${createParams}
     );
   }
 }
@@ -546,7 +582,7 @@ async function generateMiddlewareFile(
   name: string,
   options: { logging?: boolean; timing?: boolean }
 ): Promise<void> {
-  console.log(chalk.bold.cyan('\n🔧 Struktos Code Generator - Middleware/Interceptor\n'));
+  console.log(chalk.bold.cyan('\n🔧 Struktos Code Generator - Middleware\n'));
 
   // Validate
   validateEntityName(name);
@@ -562,7 +598,7 @@ async function generateMiddlewareFile(
   const kebabName = toKebabCase(name);
 
   console.log(chalk.bold('📋 Generation Plan:'));
-  console.log(`   Interceptor: ${chalk.cyan(className + 'Interceptor')}`);
+  console.log(`   Middleware: ${chalk.cyan(className + 'Middleware')}`);
   if (options.logging) console.log(`   Template: ${chalk.cyan('Logging')}`);
   if (options.timing) console.log(`   Template: ${chalk.cyan('Timing')}`);
   console.log();
@@ -579,17 +615,17 @@ async function generateMiddlewareFile(
 
     if (options.logging) {
       content = generateLoggingMiddleware();
-      fileName = 'logging.interceptor.ts';
+      fileName = 'logging.middleware.ts';
     } else if (options.timing) {
       content = generateTimingMiddleware();
-      fileName = 'timing.interceptor.ts';
+      fileName = 'timing.middleware.ts';
     } else {
       content = generateMiddleware(name);
-      fileName = `${kebabName}.interceptor.ts`;
+      fileName = `${kebabName}.middleware.ts`;
     }
 
     // Write file
-    spinner.text = 'Writing interceptor file...';
+    spinner.text = 'Writing middleware file...';
     await writeFile(
       path.join('src/infrastructure/middleware', fileName),
       content
@@ -605,9 +641,9 @@ async function generateMiddlewareFile(
     console.log();
     console.log(chalk.bold('📝 Usage:'));
     console.log();
-    console.log(chalk.cyan(`   import { ${className}Interceptor } from './infrastructure/middleware/${kebabName}.interceptor';`));
+    console.log(chalk.cyan(`   import { ${className}Middleware } from './infrastructure/middleware/${fileName.replace('.ts', '')}';`));
     console.log();
-    console.log(chalk.cyan(`   app.use(new ${className}Interceptor());`));
+    console.log(chalk.cyan(`   app.use(new ${className}Middleware());`));
     console.log();
 
   } catch (error) {
@@ -704,8 +740,8 @@ async function generateClientFile(
 ): Promise<void> {
   console.log(chalk.bold.cyan('\n🔧 Struktos Code Generator - gRPC Client\n'));
 
-  // Validate
-  validateEntityName(serviceName);
+  // Validate (allows kebab-case for service names like inventory-service)
+  validateServiceName(serviceName);
 
   // Check if in Struktos project
   if (!(await isStruktosProject())) {

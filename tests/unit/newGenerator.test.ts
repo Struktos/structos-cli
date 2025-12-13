@@ -1,5 +1,5 @@
 /**
- * New Generators Unit Tests (v0.3.0)
+ * New Generators Unit Tests (v0.3.1)
  * 
  * Tests for middleware, use-case, and client generators.
  */
@@ -19,47 +19,48 @@ import {
 
 describe('middlewareGenerator', () => {
   describe('generateMiddleware', () => {
-    it('should generate a valid interceptor class', () => {
+    it('should generate a valid middleware class', () => {
       const result = generateMiddleware('auth');
 
-      expect(result).toContain('export class AuthInterceptor');
-      expect(result).toContain('implements IInterceptor');
-      expect(result).toContain('intercept(context: RequestContext, next: NextFn)');
-      expect(result).toContain('Observable<any>');
+      expect(result).toContain('export class AuthMiddleware');
+      expect(result).toContain('implements IStruktosMiddleware');
+      expect(result).toContain('async invoke(ctx: MiddlewareContext');
+      expect(result).toContain('Promise<void>');
     });
 
     it('should include context traceId usage', () => {
       const result = generateMiddleware('logging');
 
-      expect(result).toContain("context.get('traceId')");
+      expect(result).toContain("ctx.context.get('traceId'");
     });
 
-    it('should include rxjs operators', () => {
+    it('should include async/await pattern', () => {
       const result = generateMiddleware('test');
 
-      expect(result).toContain('tap(');
-      expect(result).toContain('catchError(');
+      expect(result).toContain('await next()');
+      expect(result).toContain('try {');
+      expect(result).toContain('catch (error)');
     });
 
     it('should include factory function', () => {
       const result = generateMiddleware('custom');
 
-      expect(result).toContain('export function createCustomInterceptor');
+      expect(result).toContain('export function createCustomMiddleware');
     });
 
     it('should use correct naming conventions', () => {
       const result = generateMiddleware('requestValidation');
 
-      expect(result).toContain('RequestValidationInterceptor');
-      expect(result).toContain('createRequestValidationInterceptor');
+      expect(result).toContain('RequestValidationMiddleware');
+      expect(result).toContain('createRequestValidationMiddleware');
     });
   });
 
   describe('generateLoggingMiddleware', () => {
-    it('should generate logging interceptor with options', () => {
+    it('should generate logging middleware with options', () => {
       const result = generateLoggingMiddleware();
 
-      expect(result).toContain('LoggingInterceptor');
+      expect(result).toContain('LoggingMiddleware');
       expect(result).toContain('LoggingOptions');
       expect(result).toContain('logRequests');
       expect(result).toContain('logResponses');
@@ -82,10 +83,10 @@ describe('middlewareGenerator', () => {
   });
 
   describe('generateTimingMiddleware', () => {
-    it('should generate timing interceptor with thresholds', () => {
+    it('should generate timing middleware with thresholds', () => {
       const result = generateTimingMiddleware();
 
-      expect(result).toContain('TimingInterceptor');
+      expect(result).toContain('TimingMiddleware');
       expect(result).toContain('warnThresholdMs');
       expect(result).toContain('errorThresholdMs');
     });
@@ -98,10 +99,11 @@ describe('middlewareGenerator', () => {
       expect(result).toContain("'ok' | 'slow' | 'critical'");
     });
 
-    it('should use finalize operator', () => {
+    it('should use try/finally pattern for timing', () => {
       const result = generateTimingMiddleware();
 
-      expect(result).toContain('finalize(');
+      expect(result).toContain('try {');
+      expect(result).toContain('} finally {');
     });
   });
 });
@@ -154,8 +156,8 @@ describe('useCaseGenerator', () => {
     it('should generate appropriate implementation for create action', () => {
       const result = generateUseCase('create', 'product');
 
-      expect(result).toContain('create(');
-      expect(result).toContain('crypto.randomUUID()');
+      expect(result).toContain('Product.create(input)');
+      expect(result).toContain('productRepository.create(entity)');
     });
 
     it('should generate appropriate implementation for list action', () => {

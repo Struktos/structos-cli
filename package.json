@@ -1,6 +1,6 @@
 {
   "name": "@struktos/cli",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "CLI tool for creating and managing Struktos.js projects with HTTP and gRPC support",
   "main": "dist/index.js",
   "bin": {

@@ -59,6 +59,22 @@ export function validateEntityName(name: string): void {
 }
 
 /**
+ * Validate service name (allows kebab-case for microservices)
+ * Examples: user-service, inventory-service, UserService
+ */
+export function validateServiceName(name: string): void {
+  if (!name) {
+    throw new Error('Service name is required');
+  }
+  // Allow: PascalCase, camelCase, kebab-case, snake_case
+  if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(name)) {
+    throw new Error(
+      'Service name must start with a letter and contain only alphanumeric characters, hyphens, or underscores'
+    );
+  }
+}
+
+/**
  * Convert to PascalCase
  */
 export function toPascalCase(str: string): string {
