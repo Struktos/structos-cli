@@ -1,86 +1,121 @@
+/**
+ * @struktos/cli - Prompt Utilities
+ */
+
 import inquirer from 'inquirer';
-import { ProjectOptions, FrameworkAdapter, PersistenceLayer } from '../types';
-import path from 'path';
+import { ProjectConfig, FrameworkType, PersistenceType, ServiceType } from '../types';
 
 /**
- * Prompt user for project configuration
+ * Prompt for project configuration
  */
-export async function promptProjectOptions(projectName?: string): Promise<ProjectOptions> {
+export async function promptProjectConfig(defaultName?: string): Promise<ProjectConfig> {
   const answers = await inquirer.prompt([
     {
       type: 'input',
       name: 'name',
       message: 'Project name:',
-      default: projectName || 'my-struktos-app',
+      default: defaultName || 'my-struktos-app',
       validate: (input: string) => {
-        if (!input || input.trim().length === 0) {
-          return 'Project name is required';
-        }
-        if (!/^[a-z0-9-_]+$/i.test(input)) {
-          return 'Project name can only contain letters, numbers, hyphens, and underscores';
+        if (!input.trim()) return 'Project name is required';
+        if (!/^[a-z0-9-]+$/.test(input)) {
+          return 'Project name must be lowercase letters, numbers, and hyphens only';
         }
         return true;
-      }
+      },
     },
     {
       type: 'list',
       name: 'framework',
-      message: 'Choose Framework Adapter:',
+      message: 'Select framework/adapter:',
       choices: [
-        { name: 'Express (recommended)', value: 'express' },
-        { name: 'Fastify (coming soon)', value: 'fastify', disabled: true },
-        { name: 'Koa (coming soon)', value: 'koa', disabled: true }
+        { name: '🚀 Express - Fast, minimalist web framework', value: 'express' },
+        { name: '⚡ Fastify - High-performance web framework', value: 'fastify' },
+        { name: '🏢 NestJS - Enterprise-grade framework', value: 'nestjs' },
+        { name: '📡 gRPC - Microservices with Protocol Buffers', value: 'grpc' },
       ],
-      default: 'express'
+      default: 'express',
     },
     {
       type: 'list',
       name: 'persistence',
-      message: 'Choose Persistence Layer:',
+      message: 'Select persistence layer:',
       choices: [
-        { name: 'PostgreSQL (with Prisma)', value: 'postgresql' },
-        { name: 'MongoDB (with Mongoose)', value: 'mongodb' },
-        { name: 'None (In-Memory only)', value: 'none' }
+        { name: '🐘 PostgreSQL - Relational database with Prisma', value: 'postgresql' },
+        { name: '🍃 MongoDB - Document database with Mongoose', value: 'mongodb' },
+        { name: '📦 None - In-memory storage only', value: 'none' },
       ],
-      default: 'none'
+      default: 'none',
     },
     {
       type: 'confirm',
-      name: 'includeAuth',
-      message: 'Include Authentication (@struktos/auth)?',
-      default: true
-    }
+      name: 'useAuth',
+      message: 'Include authentication (@struktos/auth)?',
+      default: true,
+    },
+    {
+      type: 'confirm',
+      name: 'useDocker',
+      message: 'Include Docker configuration?',
+      default: true,
+    },
   ]);
 
-  const targetDirectory = path.resolve(process.cwd(), answers.name);
-
-  return {
-    name: answers.name,
-    framework: answers.framework as FrameworkAdapter,
-    persistence: answers.persistence as PersistenceLayer,
-    includeAuth: answers.includeAuth,
-    targetDirectory
-  };
+  return answers as ProjectConfig;
 }
 
 /**
- * Confirm project creation
+ * Prompt for service type selection
  */
-export async function confirmCreation(options: ProjectOptions): Promise<boolean> {
-  console.log('\n📋 Project Configuration:');
-  console.log(`   Name: ${options.name}`);
-  console.log(`   Framework: ${options.framework}`);
-  console.log(`   Persistence: ${options.persistence}`);
-  console.log(`   Authentication: ${options.includeAuth ? 'Yes' : 'No'}`);
-  console.log(`   Location: ${options.targetDirectory}\n`);
+export async function promptServiceType(): Promise<ServiceType> {
+  const { type } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'type',
+      message: 'Select service type:',
+      choices: [
+        { name: '🌐 HTTP - REST API service', value: 'http' },
+        { name: '📡 gRPC - Protocol Buffer service', value: 'grpc' },
+      ],
+      default: 'http',
+    },
+  ]);
 
+  return type;
+}
+
+/**
+ * Prompt for gRPC method types
+ */
+export async function promptGrpcMethods(serviceName: string): Promise<string[]> {
+  const { methods } = await inquirer.prompt([
+    {
+      type: 'checkbox',
+      name: 'methods',
+      message: `Select methods for ${serviceName} service:`,
+      choices: [
+        { name: 'Get - Retrieve single item (unary)', value: 'get', checked: true },
+        { name: 'List - Retrieve multiple items (server streaming)', value: 'list', checked: true },
+        { name: 'Create - Create new item (unary)', value: 'create', checked: true },
+        { name: 'Update - Update existing item (unary)', value: 'update', checked: true },
+        { name: 'Delete - Delete item (unary)', value: 'delete', checked: true },
+      ],
+    },
+  ]);
+
+  return methods;
+}
+
+/**
+ * Confirm overwrite
+ */
+export async function confirmOverwrite(path: string): Promise<boolean> {
   const { confirm } = await inquirer.prompt([
     {
       type: 'confirm',
       name: 'confirm',
-      message: 'Create project with these settings?',
-      default: true
-    }
+      message: `${path} already exists. Overwrite?`,
+      default: false,
+    },
   ]);
 
   return confirm;

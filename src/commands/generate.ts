@@ -1,35 +1,42 @@
+/**
+ * @struktos/cli - Generate Command
+ * 
+ * Generate various project components including entities and services.
+ */
+
 import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
-import fs from 'fs-extra';
 import path from 'path';
-import { parseFields, validateEntityName, toPascalCase, toKebabCase } from '../utils/fieldParser';
+import fs from 'fs-extra';
 import {
-  generateEntityFile,
-  generateRepositoryInterface,
-  generateRepositoryImplementation
-} from '../generators/entityGenerator';
+  parseFields,
+  validateEntityName,
+  toPascalCase,
+  toKebabCase,
+} from '../utils/fieldParser';
+import { promptServiceType, promptGrpcMethods } from '../utils/prompts';
+import { isStruktosProject, writeFile } from '../utils/project';
 import {
-  generateCreateUseCase,
-  generateGetUseCase,
-  generateListUseCase,
-  generateUpdateUseCase,
-  generateDeleteUseCase
-} from '../generators/useCaseGenerator';
+  generateProtoFile,
+  generateGrpcServiceHandler,
+  generateServiceRegistration,
+} from '../generators/grpcGenerator';
+import { FieldDefinition, ServiceType } from '../types';
 
 /**
- * Create generate command
+ * Create the 'generate' command
  */
 export function createGenerateCommand(): Command {
   const generate = new Command('generate')
     .alias('g')
-    .description('Generate code based on templates');
+    .description('Generate code components');
 
-  // Entity subcommand
+  // Entity subcommand (existing)
   generate
     .command('entity')
-    .argument('<name>', 'Name of the entity to generate')
-    .option('-f, --fields <fields>', 'Field definitions (e.g., "name:string,age:number")')
+    .argument('<name>', 'Name of the entity')
+    .option('-f, --fields <fields>', 'Field definitions (e.g., "name:string,price:number")')
     .description('Generate a complete entity with repository and use cases')
     .action(async (name: string, options: { fields?: string }) => {
       try {
@@ -40,65 +47,94 @@ export function createGenerateCommand(): Command {
       }
     });
 
+  // Service subcommand (new)
+  generate
+    .command('service')
+    .argument('<name>', 'Name of the service')
+    .option('-t, --type <type>', 'Service type (http or grpc)', 'grpc')
+    .option('-m, --methods <methods>', 'Methods to generate (comma-separated: get,list,create,update,delete)')
+    .description('Generate a service with handlers')
+    .action(async (name: string, options: { type?: string; methods?: string }) => {
+      try {
+        await generateService(name, options.type as ServiceType, options.methods);
+      } catch (error) {
+        console.error(chalk.red('\n❌ Error generating service:'), error);
+        process.exit(1);
+      }
+    });
+
   return generate;
 }
 
 /**
- * Generate entity files
+ * Generate entity files (existing functionality)
  */
 async function generateEntity(entityName: string, fieldsInput?: string): Promise<void> {
   console.log(chalk.bold.cyan('\n🔧 Struktos Code Generator - Entity\n'));
 
-  // Validate entity name
+  // Validate
   validateEntityName(entityName);
 
-  // Parse fields
-  let fields = fieldsInput ? parseFields(fieldsInput) : [];
-  
-  // Ensure id field exists
-  const hasIdField = fields.some(f => f.name.toLowerCase() === 'id');
-  if (!hasIdField) {
-    fields = [{ name: 'id', type: 'string', optional: false }, ...fields];
-  }
-
-  // Display generation plan
-  const className = toPascalCase(entityName);
-  console.log(chalk.bold('📋 Generation Plan:'));
-  console.log(`   Entity: ${chalk.cyan(className)}`);
-  console.log(`   Fields: ${fields.length}`);
-  fields.forEach(f => {
-    console.log(`      - ${f.name}: ${f.type}${f.optional ? '?' : ''}`);
-  });
-  console.log();
-
-  // Check if we're in a Struktos project
-  const isStruktosProject = await validateProjectStructure();
-  if (!isStruktosProject) {
+  // Check if in Struktos project
+  if (!(await isStruktosProject())) {
     console.log(chalk.red('❌ Not a Struktos project!'));
     console.log(chalk.yellow('   Run this command in a project created with "struktos new"\n'));
     process.exit(1);
   }
 
-  const spinner = ora('Generating files...').start();
+  // Parse fields
+  let fields = fieldsInput ? parseFields(fieldsInput) : [];
+  const hasIdField = fields.some((f) => f.name.toLowerCase() === 'id');
+  if (!hasIdField) {
+    fields = [{ name: 'id', type: 'string', optional: false }, ...fields];
+  }
+
+  const className = toPascalCase(entityName);
+  const kebabName = toKebabCase(entityName);
+
+  console.log(chalk.bold('📋 Generation Plan:'));
+  console.log(`   Entity: ${chalk.cyan(className)}`);
+  console.log(`   Fields: ${fields.length}`);
+  fields.forEach((f) => {
+    console.log(`      - ${f.name}: ${f.type}${f.optional ? '?' : ''}`);
+  });
+  console.log();
+
+  const spinner = ora('Generating entity files...').start();
 
   try {
-    // Generate Domain Layer
+    // Generate domain entity
     spinner.text = 'Generating domain entity...';
-    await generateDomainLayer(entityName, fields);
-    spinner.succeed('Generated domain layer');
+    await writeFile(
+      path.join('src/domain/entities', `${className}.entity.ts`),
+      generateEntityFile(className, fields)
+    );
 
-    // Generate Repository Interface
-    spinner.start('Generating repository interface...');
-    await generateRepositoryLayer(entityName, fields);
-    spinner.succeed('Generated repository layer');
+    // Generate repository interface
+    spinner.text = 'Generating repository interface...';
+    await writeFile(
+      path.join('src/domain/repositories', `I${className}Repository.ts`),
+      generateRepositoryInterface(className)
+    );
 
-    // Generate Use Cases
-    spinner.start('Generating use cases...');
-    await generateApplicationLayer(entityName, fields);
-    spinner.succeed('Generated application layer');
+    // Generate repository implementation
+    spinner.text = 'Generating repository implementation...';
+    await writeFile(
+      path.join('src/infrastructure/adapters/persistence', `${className}.repository.ts`),
+      generateRepositoryImplementation(className)
+    );
 
-    // Success message
-    printSuccessMessage(entityName, fields);
+    spinner.succeed('Generated entity files');
+
+    console.log();
+    console.log(chalk.green.bold('✅ Entity generated successfully!'));
+    console.log();
+    console.log(chalk.bold('📁 Generated files:'));
+    console.log(chalk.gray(`   src/domain/entities/${className}.entity.ts`));
+    console.log(chalk.gray(`   src/domain/repositories/I${className}Repository.ts`));
+    console.log(chalk.gray(`   src/infrastructure/adapters/persistence/${className}.repository.ts`));
+    console.log();
+
   } catch (error) {
     spinner.fail('Failed to generate entity');
     throw error;
@@ -106,135 +142,329 @@ async function generateEntity(entityName: string, fieldsInput?: string): Promise
 }
 
 /**
- * Validate project structure
+ * Generate service files (new functionality)
  */
-async function validateProjectStructure(): Promise<boolean> {
-  const requiredDirs = [
-    'src/domain/entities',
-    'src/domain/repositories',
-    'src/application/use-cases',
-    'src/infrastructure/adapters/persistence'
-  ];
+async function generateService(
+  serviceName: string,
+  serviceType?: ServiceType,
+  methodsInput?: string
+): Promise<void> {
+  console.log(chalk.bold.cyan('\n🔧 Struktos Code Generator - Service\n'));
 
-  for (const dir of requiredDirs) {
-    const exists = await fs.pathExists(dir);
-    if (!exists) {
-      return false;
-    }
+  // Validate
+  validateEntityName(serviceName);
+
+  // Check if in Struktos project
+  if (!(await isStruktosProject())) {
+    console.log(chalk.red('❌ Not a Struktos project!'));
+    console.log(chalk.yellow('   Run this command in a project created with "struktos new"\n'));
+    process.exit(1);
   }
 
-  return true;
+  // Determine service type
+  const type = serviceType || (await promptServiceType());
+
+  // Parse or prompt for methods
+  let methods: string[];
+  if (methodsInput) {
+    methods = methodsInput.split(',').map((m) => m.trim().toLowerCase());
+  } else if (type === 'grpc') {
+    methods = await promptGrpcMethods(serviceName);
+  } else {
+    methods = ['get', 'list', 'create', 'update', 'delete'];
+  }
+
+  const className = toPascalCase(serviceName);
+  const kebabName = toKebabCase(serviceName);
+
+  console.log();
+  console.log(chalk.bold('📋 Generation Plan:'));
+  console.log(`   Service: ${chalk.cyan(className)}`);
+  console.log(`   Type: ${chalk.cyan(type)}`);
+  console.log(`   Methods: ${chalk.cyan(methods.join(', '))}`);
+  console.log();
+
+  if (type === 'grpc') {
+    await generateGrpcService(serviceName, methods);
+  } else {
+    await generateHttpService(serviceName, methods);
+  }
 }
 
 /**
- * Generate domain layer files
+ * Generate gRPC service files
  */
-async function generateDomainLayer(entityName: string, fields: any[]): Promise<void> {
-  const className = toPascalCase(entityName);
-  const entityContent = generateEntityFile(entityName, fields);
+async function generateGrpcService(serviceName: string, methods: string[]): Promise<void> {
+  const className = toPascalCase(serviceName);
+  const kebabName = toKebabCase(serviceName);
 
-  await fs.writeFile(
-    path.join('src/domain/entities', `${className}.entity.ts`),
-    entityContent
-  );
+  const spinner = ora('Generating gRPC service files...').start();
+
+  try {
+    // Ensure directories exist
+    await fs.ensureDir('protos');
+    await fs.ensureDir('src/infrastructure/adapters/grpc');
+
+    // Generate .proto file
+    spinner.text = 'Generating .proto file...';
+    const protoContent = generateProtoFile(serviceName, methods);
+    await writeFile(
+      path.join('protos', `${kebabName}.proto`),
+      protoContent
+    );
+    spinner.succeed('Generated .proto file');
+
+    // Generate service handler
+    spinner.start('Generating service handler...');
+    const handlerContent = generateGrpcServiceHandler(serviceName, methods);
+    await writeFile(
+      path.join('src/infrastructure/adapters/grpc', `${kebabName}.service.grpc.ts`),
+      handlerContent
+    );
+    spinner.succeed('Generated service handler');
+
+    // Generate registration example
+    spinner.start('Generating registration example...');
+    const registrationContent = generateServiceRegistration(serviceName);
+    await writeFile(
+      path.join('src/infrastructure/adapters/grpc', `${kebabName}.registration.ts`),
+      registrationContent
+    );
+    spinner.succeed('Generated registration example');
+
+    // Success message
+    console.log();
+    console.log(chalk.green.bold('✅ gRPC Service generated successfully!'));
+    console.log();
+    console.log(chalk.bold('📁 Generated files:'));
+    console.log(chalk.gray(`   protos/${kebabName}.proto`));
+    console.log(chalk.gray(`   src/infrastructure/adapters/grpc/${kebabName}.service.grpc.ts`));
+    console.log(chalk.gray(`   src/infrastructure/adapters/grpc/${kebabName}.registration.ts`));
+    console.log();
+    console.log(chalk.bold('📝 Next steps:'));
+    console.log();
+    console.log(chalk.yellow('   1. Add to your main.ts:'));
+    console.log(chalk.cyan(`      import { register${className}Service } from './infrastructure/adapters/grpc/${kebabName}.service.grpc';`));
+    console.log();
+    console.log(chalk.yellow('   2. Register the service:'));
+    console.log(chalk.cyan(`      await register${className}Service(adapter, './protos/${kebabName}.proto');`));
+    console.log();
+    console.log(chalk.yellow('   3. Implement business logic in the handler file'));
+    console.log();
+
+  } catch (error) {
+    spinner.fail('Failed to generate gRPC service');
+    throw error;
+  }
 }
 
 /**
- * Generate repository layer files
+ * Generate HTTP service files
  */
-async function generateRepositoryLayer(entityName: string, fields: any[]): Promise<void> {
-  const className = toPascalCase(entityName);
+async function generateHttpService(serviceName: string, methods: string[]): Promise<void> {
+  const className = toPascalCase(serviceName);
+  const kebabName = toKebabCase(serviceName);
 
-  // Repository interface
-  const interfaceContent = generateRepositoryInterface(entityName, fields);
-  await fs.writeFile(
-    path.join('src/domain/repositories', `I${className}Repository.ts`),
-    interfaceContent
-  );
+  const spinner = ora('Generating HTTP service files...').start();
 
-  // Repository implementation
-  const implContent = generateRepositoryImplementation(entityName, fields);
-  await fs.writeFile(
-    path.join('src/infrastructure/adapters/persistence', `${className}.repository.ts`),
-    implContent
-  );
+  try {
+    // Ensure directory exists
+    await fs.ensureDir('src/infrastructure/adapters/http');
+
+    // Generate controller
+    spinner.text = 'Generating controller...';
+    const controllerContent = generateHttpController(serviceName, methods);
+    await writeFile(
+      path.join('src/infrastructure/adapters/http', `${kebabName}.controller.ts`),
+      controllerContent
+    );
+    spinner.succeed('Generated controller');
+
+    // Success message
+    console.log();
+    console.log(chalk.green.bold('✅ HTTP Service generated successfully!'));
+    console.log();
+    console.log(chalk.bold('📁 Generated files:'));
+    console.log(chalk.gray(`   src/infrastructure/adapters/http/${kebabName}.controller.ts`));
+    console.log();
+    console.log(chalk.bold('📝 Next steps:'));
+    console.log();
+    console.log(chalk.yellow('   1. Import and register routes in your main.ts'));
+    console.log(chalk.yellow('   2. Implement business logic using use cases'));
+    console.log();
+
+  } catch (error) {
+    spinner.fail('Failed to generate HTTP service');
+    throw error;
+  }
 }
 
-/**
- * Generate application layer files
+// ==================== Helper Generators ====================
+
+function generateEntityFile(className: string, fields: FieldDefinition[]): string {
+  const constructorParams = fields
+    .map((f) => `    public readonly ${f.name}${f.optional ? '?' : ''}: ${f.type},`)
+    .join('\n');
+
+  return `/**
+ * ${className} Entity
+ * Generated by @struktos/cli
  */
-async function generateApplicationLayer(entityName: string, fields: any[]): Promise<void> {
-  const className = toPascalCase(entityName);
-  const kebabName = toKebabCase(entityName);
 
-  // Create use case
-  const createContent = generateCreateUseCase(entityName, fields);
-  await fs.writeFile(
-    path.join('src/application/use-cases', `create-${kebabName}.usecase.ts`),
-    createContent
-  );
+export class ${className} {
+  constructor(
+${constructorParams}
+  ) {}
 
-  // Get use case
-  const getContent = generateGetUseCase(entityName, fields);
-  await fs.writeFile(
-    path.join('src/application/use-cases', `get-${kebabName}.usecase.ts`),
-    getContent
-  );
+  toObject(): Record<string, unknown> {
+    return {
+      ${fields.map((f) => f.name).join(',\n      ')},
+    };
+  }
 
-  // List use case
-  const listContent = generateListUseCase(entityName, fields);
-  await fs.writeFile(
-    path.join('src/application/use-cases', `list-${kebabName}s.usecase.ts`),
-    listContent
-  );
-
-  // Update use case
-  const updateContent = generateUpdateUseCase(entityName, fields);
-  await fs.writeFile(
-    path.join('src/application/use-cases', `update-${kebabName}.usecase.ts`),
-    updateContent
-  );
-
-  // Delete use case
-  const deleteContent = generateDeleteUseCase(entityName, fields);
-  await fs.writeFile(
-    path.join('src/application/use-cases', `delete-${kebabName}.usecase.ts`),
-    deleteContent
-  );
+  static fromObject(data: Record<string, unknown>): ${className} {
+    return new ${className}(
+      ${fields.map((f) => `data.${f.name} as ${f.type}`).join(',\n      ')},
+    );
+  }
+}
+`;
 }
 
-/**
- * Print success message
+function generateRepositoryInterface(className: string): string {
+  return `/**
+ * I${className}Repository Interface
+ * Generated by @struktos/cli
  */
-function printSuccessMessage(entityName: string, fields: any[]): void {
-  const className = toPascalCase(entityName);
-  const kebabName = toKebabCase(entityName);
 
-  console.log(chalk.green.bold('\n✅ Entity generated successfully!\n'));
+import { ${className} } from '../entities/${className}.entity';
 
-  console.log(chalk.bold('📁 Generated files:\n'));
+export interface I${className}Repository {
+  findById(id: string): Promise<${className} | null>;
+  findAll(): Promise<${className}[]>;
+  create(entity: ${className}): Promise<${className}>;
+  update(entity: ${className}): Promise<${className}>;
+  delete(id: string): Promise<boolean>;
+}
+`;
+}
 
-  console.log(chalk.cyan('Domain Layer:'));
-  console.log(`   ${chalk.white('src/domain/entities/')}${className}.entity.ts`);
-  console.log(`   ${chalk.white('src/domain/repositories/')}I${className}Repository.ts\n`);
+function generateRepositoryImplementation(className: string): string {
+  const camelName = className.charAt(0).toLowerCase() + className.slice(1);
 
-  console.log(chalk.cyan('Application Layer:'));
-  console.log(`   ${chalk.white('src/application/use-cases/')}create-${kebabName}.usecase.ts`);
-  console.log(`   ${chalk.white('src/application/use-cases/')}get-${kebabName}.usecase.ts`);
-  console.log(`   ${chalk.white('src/application/use-cases/')}list-${kebabName}s.usecase.ts`);
-  console.log(`   ${chalk.white('src/application/use-cases/')}update-${kebabName}.usecase.ts`);
-  console.log(`   ${chalk.white('src/application/use-cases/')}delete-${kebabName}.usecase.ts\n`);
+  return `/**
+ * ${className} Repository Implementation (In-Memory)
+ * Generated by @struktos/cli
+ */
 
-  console.log(chalk.cyan('Infrastructure Layer:'));
-  console.log(`   ${chalk.white('src/infrastructure/adapters/persistence/')}${className}.repository.ts\n`);
+import { ${className} } from '../../../domain/entities/${className}.entity';
+import { I${className}Repository } from '../../../domain/repositories/I${className}Repository';
 
-  console.log(chalk.bold('🎯 Next steps:\n'));
-  console.log(`   1. Review generated files`);
-  console.log(`   2. Customize business logic in ${className}.entity.ts`);
-  console.log(`   3. Add validation rules in use cases`);
-  console.log(`   4. Integrate with your HTTP controllers\n`);
+export class ${className}Repository implements I${className}Repository {
+  private ${camelName}s: Map<string, ${className}> = new Map();
 
-  console.log(chalk.gray('━'.repeat(60)));
-  console.log(chalk.bold.cyan('  Built with Struktos.js'));
-  console.log(chalk.gray('━'.repeat(60) + '\n'));
+  async findById(id: string): Promise<${className} | null> {
+    return this.${camelName}s.get(id) || null;
+  }
+
+  async findAll(): Promise<${className}[]> {
+    return Array.from(this.${camelName}s.values());
+  }
+
+  async create(entity: ${className}): Promise<${className}> {
+    this.${camelName}s.set(entity.id, entity);
+    return entity;
+  }
+
+  async update(entity: ${className}): Promise<${className}> {
+    this.${camelName}s.set(entity.id, entity);
+    return entity;
+  }
+
+  async delete(id: string): Promise<boolean> {
+    return this.${camelName}s.delete(id);
+  }
+}
+`;
+}
+
+function generateHttpController(serviceName: string, methods: string[]): string {
+  const className = toPascalCase(serviceName);
+  const camelName = serviceName.charAt(0).toLowerCase() + serviceName.slice(1);
+  const pluralCamel = camelName + 's';
+
+  const methodImplementations = methods.map((method) => {
+    switch (method) {
+      case 'get':
+        return `  /**
+   * GET /${pluralCamel}/:id
+   */
+  async get${className}(req: any, res: any): Promise<void> {
+    const { id } = req.params;
+    // TODO: Implement using use case
+    res.json({ id, message: 'Get ${className}' });
+  }`;
+      case 'list':
+        return `  /**
+   * GET /${pluralCamel}
+   */
+  async list${className}s(req: any, res: any): Promise<void> {
+    // TODO: Implement using use case
+    res.json({ message: 'List ${className}s', data: [] });
+  }`;
+      case 'create':
+        return `  /**
+   * POST /${pluralCamel}
+   */
+  async create${className}(req: any, res: any): Promise<void> {
+    const data = req.body;
+    // TODO: Implement using use case
+    res.status(201).json({ message: 'Created ${className}', data });
+  }`;
+      case 'update':
+        return `  /**
+   * PUT /${pluralCamel}/:id
+   */
+  async update${className}(req: any, res: any): Promise<void> {
+    const { id } = req.params;
+    const data = req.body;
+    // TODO: Implement using use case
+    res.json({ id, message: 'Updated ${className}', data });
+  }`;
+      case 'delete':
+        return `  /**
+   * DELETE /${pluralCamel}/:id
+   */
+  async delete${className}(req: any, res: any): Promise<void> {
+    const { id } = req.params;
+    // TODO: Implement using use case
+    res.json({ id, message: 'Deleted ${className}' });
+  }`;
+      default:
+        return '';
+    }
+  }).filter(Boolean).join('\n\n');
+
+  return `/**
+ * ${className} Controller
+ * Generated by @struktos/cli
+ */
+
+import { RequestContext } from '@struktos/core';
+
+export class ${className}Controller {
+${methodImplementations}
+
+  /**
+   * Register routes with the adapter
+   */
+  registerRoutes(adapter: any): void {
+    ${methods.includes('list') ? `adapter.get('/${pluralCamel}', this.list${className}s.bind(this));` : ''}
+    ${methods.includes('get') ? `adapter.get('/${pluralCamel}/:id', this.get${className}.bind(this));` : ''}
+    ${methods.includes('create') ? `adapter.post('/${pluralCamel}', this.create${className}.bind(this));` : ''}
+    ${methods.includes('update') ? `adapter.put('/${pluralCamel}/:id', this.update${className}.bind(this));` : ''}
+    ${methods.includes('delete') ? `adapter.delete('/${pluralCamel}/:id', this.delete${className}.bind(this));` : ''}
+  }
+}
+`;
 }

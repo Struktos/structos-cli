@@ -1,87 +1,74 @@
 /**
- * Field definition for entity generation
+ * @struktos/cli - Field Parser Utilities
  */
-export interface FieldDefinition {
-  name: string;
-  type: string;
-  optional?: boolean;
-}
+
+import { FieldDefinition } from '../types';
 
 /**
- * Supported TypeScript types
+ * Parse field definitions from string
+ * Format: "name:type,name:type?" (? for optional)
  */
-const VALID_TYPES = [
-  'string',
-  'number',
-  'boolean',
-  'Date',
-  'any',
-  'unknown'
-];
+export function parseFields(input: string): FieldDefinition[] {
+  if (!input.trim()) return [];
 
-/**
- * Parse field definitions from command line input
- * 
- * @example
- * parseFields("name:string,age:number,email:string?")
- * // Returns: [
- * //   { name: 'name', type: 'string', optional: false },
- * //   { name: 'age', type: 'number', optional: false },
- * //   { name: 'email', type: 'string', optional: true }
- * // ]
- */
-export function parseFields(fieldsInput: string): FieldDefinition[] {
-  if (!fieldsInput || fieldsInput.trim().length === 0) {
-    return [];
-  }
-
-  const fields: FieldDefinition[] = [];
-  const fieldPairs = fieldsInput.split(',').map(f => f.trim());
-
-  for (const pair of fieldPairs) {
-    if (!pair) continue;
-
-    const [name, typeWithOptional] = pair.split(':').map(s => s.trim());
+  return input.split(',').map((field) => {
+    const trimmed = field.trim();
+    const [name, typeWithOptional] = trimmed.split(':');
 
     if (!name || !typeWithOptional) {
-      throw new Error(
-        `Invalid field definition: "${pair}". Expected format: "fieldName:type" or "fieldName:type?"`
-      );
+      throw new Error(`Invalid field format: "${trimmed}". Use "name:type"`);
     }
 
-    // Check for optional marker (?)
     const optional = typeWithOptional.endsWith('?');
     const type = optional ? typeWithOptional.slice(0, -1) : typeWithOptional;
 
-    // Validate type
-    if (!VALID_TYPES.includes(type)) {
-      throw new Error(
-        `Invalid type "${type}" for field "${name}". Valid types: ${VALID_TYPES.join(', ')}`
-      );
-    }
+    validateType(type);
 
-    fields.push({
-      name,
-      type,
-      optional
-    });
-  }
-
-  return fields;
+    return {
+      name: name.trim(),
+      type: type.trim(),
+      optional,
+    };
+  });
 }
 
 /**
- * Convert string to PascalCase
+ * Validate field type
+ */
+export function validateType(type: string): void {
+  const validTypes = ['string', 'number', 'boolean', 'Date', 'any', 'unknown'];
+  if (!validTypes.includes(type)) {
+    throw new Error(
+      `Invalid type: "${type}". Valid types: ${validTypes.join(', ')}`
+    );
+  }
+}
+
+/**
+ * Validate entity name
+ */
+export function validateEntityName(name: string): void {
+  if (!name) {
+    throw new Error('Entity name is required');
+  }
+  if (!/^[A-Za-z][A-Za-z0-9]*$/.test(name)) {
+    throw new Error(
+      'Entity name must start with a letter and contain only alphanumeric characters'
+    );
+  }
+}
+
+/**
+ * Convert to PascalCase
  */
 export function toPascalCase(str: string): string {
   return str
-    .split(/[-_\s]/)
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join('');
+    .replace(/[-_](\w)/g, (_, c) => c.toUpperCase())
+    .replace(/^\w/, (c) => c.toUpperCase());
 }
 
 /**
- * Convert string to camelCase
+ * Convert to camelCase
  */
 export function toCamelCase(str: string): string {
   const pascal = toPascalCase(str);
@@ -89,7 +76,7 @@ export function toCamelCase(str: string): string {
 }
 
 /**
- * Convert string to kebab-case
+ * Convert to kebab-case
  */
 export function toKebabCase(str: string): string {
   return str
@@ -99,16 +86,24 @@ export function toKebabCase(str: string): string {
 }
 
 /**
- * Validate entity name
+ * Convert to snake_case
  */
-export function validateEntityName(name: string): void {
-  if (!name || name.trim().length === 0) {
-    throw new Error('Entity name is required');
-  }
+export function toSnakeCase(str: string): string {
+  return str
+    .replace(/([a-z])([A-Z])/g, '$1_$2')
+    .replace(/[\s-]+/g, '_')
+    .toLowerCase();
+}
 
-  if (!/^[a-zA-Z][a-zA-Z0-9]*$/.test(name)) {
-    throw new Error(
-      'Entity name must start with a letter and contain only letters and numbers'
-    );
+/**
+ * Pluralize a word (simple version)
+ */
+export function pluralize(word: string): string {
+  if (word.endsWith('y')) {
+    return word.slice(0, -1) + 'ies';
   }
+  if (word.endsWith('s') || word.endsWith('x') || word.endsWith('ch') || word.endsWith('sh')) {
+    return word + 'es';
+  }
+  return word + 's';
 }

@@ -1,114 +1,134 @@
+/**
+ * @struktos/cli - Project Utilities
+ */
+
 import fs from 'fs-extra';
 import path from 'path';
-import { ProjectOptions } from '../types';
 
 /**
- * Create Hexagonal Architecture folder structure
+ * Hexagonal Architecture directory structure
  */
-export async function createProjectStructure(options: ProjectOptions): Promise<void> {
-  const { targetDirectory } = options;
+export const PROJECT_STRUCTURE = {
+  src: {
+    domain: {
+      entities: null,
+      repositories: null,
+      services: null,
+    },
+    application: {
+      'use-cases': null,
+      ports: null,
+    },
+    infrastructure: {
+      adapters: {
+        http: null,
+        grpc: null,
+        persistence: null,
+      },
+    },
+    common: {
+      types: null,
+      utils: null,
+    },
+  },
+  tests: {
+    unit: null,
+    integration: null,
+  },
+  config: null,
+  protos: null,
+};
 
-  // Create base directories
-  const directories = [
-    // Root
-    targetDirectory,
-    
-    // Source directories (Hexagonal Architecture)
-    path.join(targetDirectory, 'src'),
-    path.join(targetDirectory, 'src/domain'),
-    path.join(targetDirectory, 'src/domain/entities'),
-    path.join(targetDirectory, 'src/domain/repositories'),
-    path.join(targetDirectory, 'src/domain/services'),
-    
-    path.join(targetDirectory, 'src/application'),
-    path.join(targetDirectory, 'src/application/use-cases'),
-    path.join(targetDirectory, 'src/application/ports'),
-    
-    path.join(targetDirectory, 'src/infrastructure'),
-    path.join(targetDirectory, 'src/infrastructure/adapters'),
-    path.join(targetDirectory, 'src/infrastructure/adapters/http'),
-    path.join(targetDirectory, 'src/infrastructure/adapters/persistence'),
-    
-    path.join(targetDirectory, 'src/common'),
-    path.join(targetDirectory, 'src/common/types'),
-    path.join(targetDirectory, 'src/common/utils'),
-    
-    // Config directory
-    path.join(targetDirectory, 'config'),
-    
-    // Test directory
-    path.join(targetDirectory, 'tests'),
-    path.join(targetDirectory, 'tests/unit'),
-    path.join(targetDirectory, 'tests/integration')
-  ];
+/**
+ * Create project directory structure
+ */
+export async function createProjectStructure(
+  projectPath: string,
+  includeGrpc: boolean = false
+): Promise<void> {
+  const createDirs = async (basePath: string, structure: any): Promise<void> => {
+    for (const [name, children] of Object.entries(structure)) {
+      // Skip grpc directory if not needed
+      if (name === 'grpc' && !includeGrpc) continue;
+      if (name === 'protos' && !includeGrpc) continue;
 
-  // Create all directories
-  for (const dir of directories) {
-    await fs.ensureDir(dir);
-  }
+      const dirPath = path.join(basePath, name);
+      await fs.ensureDir(dirPath);
+      
+      // Add .gitkeep for empty directories
+      if (children === null) {
+        await fs.writeFile(path.join(dirPath, '.gitkeep'), '');
+      } else {
+        await createDirs(dirPath, children);
+      }
+    }
+  };
+
+  await createDirs(projectPath, PROJECT_STRUCTURE);
 }
 
 /**
- * Check if directory exists and is empty
+ * Check if current directory is a Struktos project
  */
-export async function validateTargetDirectory(targetPath: string): Promise<{
-  exists: boolean;
-  isEmpty: boolean;
-}> {
-  const exists = await fs.pathExists(targetPath);
-  
-  if (!exists) {
-    return { exists: false, isEmpty: true };
+export async function isStruktosProject(dir: string = process.cwd()): Promise<boolean> {
+  const requiredDirs = [
+    'src/domain/entities',
+    'src/domain/repositories',
+    'src/application/use-cases',
+    'src/infrastructure/adapters',
+  ];
+
+  for (const requiredDir of requiredDirs) {
+    const exists = await fs.pathExists(path.join(dir, requiredDir));
+    if (!exists) return false;
   }
 
-  const files = await fs.readdir(targetPath);
-  const isEmpty = files.length === 0;
+  // Check for package.json with struktos dependency
+  const packageJsonPath = path.join(dir, 'package.json');
+  if (await fs.pathExists(packageJsonPath)) {
+    const packageJson = await fs.readJson(packageJsonPath);
+    const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
+    return Object.keys(deps).some((dep) => dep.startsWith('@struktos/'));
+  }
 
-  return { exists, isEmpty };
+  return false;
 }
 
 /**
- * Get dependency list based on project options
+ * Get project root directory
  */
-export function getDependencies(options: ProjectOptions): {
-  dependencies: string[];
-  devDependencies: string[];
-} {
-  const dependencies: string[] = [
-    '@struktos/core@^0.1.0'
-  ];
+export async function getProjectRoot(): Promise<string | null> {
+  let currentDir = process.cwd();
+  const root = path.parse(currentDir).root;
 
-  const devDependencies: string[] = [
-    'typescript@^5.0.0',
-    '@types/node@^20.0.0',
-    'tsx@^4.0.0',
-    'nodemon@^3.0.0'
-  ];
-
-  // Framework adapter
-  if (options.framework === 'express') {
-    dependencies.push('@struktos/adapter-express@^0.1.0');
-    dependencies.push('express@^4.18.0');
-    devDependencies.push('@types/express@^4.17.0');
+  while (currentDir !== root) {
+    if (await isStruktosProject(currentDir)) {
+      return currentDir;
+    }
+    currentDir = path.dirname(currentDir);
   }
 
-  // Authentication
-  if (options.includeAuth) {
-    dependencies.push('@struktos/auth@^0.1.0');
-    dependencies.push('jsonwebtoken@^9.0.0');
-    dependencies.push('bcryptjs@^2.4.3');
-    devDependencies.push('@types/jsonwebtoken@^9.0.0');
-    devDependencies.push('@types/bcryptjs@^2.4.0');
-  }
+  return null;
+}
 
-  // Persistence layer
-  if (options.persistence === 'postgresql') {
-    dependencies.push('@prisma/client@^5.0.0');
-    devDependencies.push('prisma@^5.0.0');
-  } else if (options.persistence === 'mongodb') {
-    dependencies.push('mongoose@^8.0.0');
-    devDependencies.push('@types/mongoose@^8.0.0');
-  }
+/**
+ * Ensure directory exists
+ */
+export async function ensureDir(dirPath: string): Promise<void> {
+  await fs.ensureDir(dirPath);
+}
 
-  return { dependencies, devDependencies };
+/**
+ * Write file with directory creation
+ */
+export async function writeFile(filePath: string, content: string): Promise<void> {
+  await fs.ensureDir(path.dirname(filePath));
+  await fs.writeFile(filePath, content, 'utf-8');
+}
+
+/**
+ * Check if file exists
+ */
+export async function fileExists(filePath: string): Promise<boolean> {
+  return fs.pathExists(filePath);
 }

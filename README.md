@@ -1,361 +1,296 @@
 # @struktos/cli
 
-> CLI tool for creating and managing Struktos.js projects
+> CLI tool for creating and managing Struktos.js projects with HTTP and gRPC support
 
 [![npm version](https://img.shields.io/npm/v/@struktos/cli.svg)](https://www.npmjs.com/package/@struktos/cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## 🎯 What is this?
-
-`@struktos/cli` is a command-line tool that helps you quickly scaffold enterprise-grade Node.js applications using the Struktos.js framework with Hexagonal Architecture.
-
-## 📦 Installation
-
-### Global Installation (Recommended)
+## 🚀 Quick Start
 
 ```bash
+# Install globally
 npm install -g @struktos/cli
-```
 
-### One-time Use (npx)
+# Create a new project
+struktos new my-app
 
-```bash
+# Or use npx
 npx @struktos/cli new my-app
 ```
 
-## 🚀 Quick Start
+## 📋 Commands
 
-### Create a New Project
+### `struktos new [name]`
 
-```bash
-# Interactive mode
-struktos new
-
-# With project name
-struktos new my-awesome-app
-```
-
-The CLI will ask you three questions:
-
-1. **Choose Framework Adapter** - Express (more coming soon)
-2. **Choose Persistence Layer** - PostgreSQL, MongoDB, or None
-3. **Include Authentication?** - Yes/No
-
-### Run Your Project
+Create a new Struktos.js project with interactive prompts.
 
 ```bash
-cd my-awesome-app
-npm install
-npm run dev
+struktos new my-api
 ```
-
-Your app will be running at `http://localhost:3000` 🚀
-
-## 📋 Features
-
-### ✅ Hexagonal Architecture
-
-Projects are scaffolded with clean Hexagonal Architecture (Ports & Adapters):
-
-```
-src/
-├── domain/              # Business logic
-│   ├── entities/        # Domain models
-│   ├── repositories/    # Repository interfaces (ports)
-│   └── services/        # Domain services
-├── application/         # Application logic
-│   ├── use-cases/       # Use case implementations
-│   └── ports/           # Application ports
-├── infrastructure/      # External adapters
-│   └── adapters/
-│       ├── http/        # HTTP controllers
-│       └── persistence/ # Database implementations
-└── common/              # Shared utilities
-    ├── types/
-    └── utils/
-```
-
-### ✅ Framework Support
-
-- **Express** ✅ Available now
-- **Fastify** 🔜 Coming soon
-- **Koa** 🔜 Coming soon
-
-### ✅ Database Support
-
-- **PostgreSQL** (with Prisma)
-- **MongoDB** (with Mongoose)
-- **None** (In-Memory for development)
-
-### ✅ Built-in Authentication
-
-Optional JWT-based authentication with [@struktos/auth](https://www.npmjs.com/package/@struktos/auth):
-
-- User registration
-- Login/logout
-- Protected routes
-- Role-based access control
-- Claims-based authorization
-
-### ✅ Auto-Generated Files
-
-The CLI generates:
-
-- ✅ `package.json` with all dependencies
-- ✅ `tsconfig.json` with optimal settings
-- ✅ `src/app.ts` with framework integration
-- ✅ `.env.example` for environment variables
-- ✅ `.gitignore` with sensible defaults
-- ✅ `README.md` with project documentation
-- ✅ Complete folder structure
-
-## 🎨 Project Templates
-
-### Express + Auth + In-Memory
-
-```bash
-struktos new my-app
-# Choose: Express, None, Yes
-```
-
-Generates a project with:
-- Express.js server
-- @struktos/auth for authentication
-- In-memory data storage
-- Ready-to-use auth endpoints
-
-### Express + PostgreSQL + Auth
-
-```bash
-struktos new my-app
-# Choose: Express, PostgreSQL, Yes
-```
-
-Generates a project with:
-- Express.js server
-- Prisma ORM for PostgreSQL
-- @struktos/auth with database persistence
-- Complete authentication system
-
-### Express + MongoDB (No Auth)
-
-```bash
-struktos new my-app
-# Choose: Express, MongoDB, No
-```
-
-Generates a project with:
-- Express.js server
-- Mongoose ODM for MongoDB
-- Clean architecture structure
-
-## 📚 Commands
-
-### `struktos new [project-name]`
-
-Create a new Struktos.js project.
 
 **Options:**
-- `project-name` - Name of the project (optional, will prompt if not provided)
+- Framework: Express, Fastify, NestJS, or **gRPC** (new!)
+- Persistence: PostgreSQL, MongoDB, or None
+- Authentication: Optional @struktos/auth integration
+- Docker: Optional Docker configuration
 
-**Example:**
+#### Creating a gRPC Microservice
+
 ```bash
-struktos new my-app
+struktos new my-service
+# Select "gRPC - Microservices with Protocol Buffers" when prompted
 ```
 
-**Interactive Prompts:**
-
-1. **Project name** - Enter your project name
-2. **Framework** - Choose Express (more coming soon)
-3. **Persistence** - Choose PostgreSQL, MongoDB, or None
-4. **Authentication** - Include @struktos/auth? (Yes/No)
-
-### `struktos --version`
-
-Show CLI version.
-
-### `struktos --help`
-
-Show help information.
-
-## 🔧 Generated Project Structure
-
-After running `struktos new my-app`, you'll get:
+This generates a complete gRPC server setup:
 
 ```
-my-app/
+my-service/
 ├── src/
+│   ├── main.ts              # gRPC server entry point
 │   ├── domain/
-│   │   ├── entities/
-│   │   │   └── User.ts              # Example entity
-│   │   ├── repositories/
-│   │   │   └── IUserRepository.ts   # Example repository interface
-│   │   └── services/
 │   ├── application/
-│   │   ├── use-cases/
-│   │   └── ports/
-│   ├── infrastructure/
-│   │   └── adapters/
-│   │       ├── http/
-│   │       └── persistence/
-│   ├── common/
-│   │   ├── types/
-│   │   └── utils/
-│   └── app.ts                       # Application entry point
-├── tests/
-│   ├── unit/
-│   └── integration/
-├── config/
+│   └── infrastructure/
+│       └── adapters/
+│           └── grpc/        # gRPC service handlers
+├── protos/                  # Protocol Buffer definitions
+│   └── health.proto
 ├── package.json
-├── tsconfig.json
-├── .env.example
-├── .gitignore
 └── README.md
 ```
 
-## 🎯 What's Included
+### `struktos generate entity <name>`
 
-### Core Dependencies
-
-All projects include:
-- `@struktos/core` - Context propagation and caching
-- `@struktos/adapter-express` - Express integration
-- `typescript` - Type safety
-- `tsx` - TypeScript execution
-- `nodemon` - Auto-restart on changes
-
-### Optional Dependencies
-
-Based on your choices:
-
-**Authentication:**
-- `@struktos/auth` - JWT authentication
-- `jsonwebtoken` - JWT tokens
-- `bcryptjs` - Password hashing
-
-**PostgreSQL:**
-- `@prisma/client` - Prisma ORM
-- `prisma` - Prisma CLI
-
-**MongoDB:**
-- `mongoose` - MongoDB ODM
-
-## 🚀 Development Workflow
-
-### 1. Create Project
+Generate a complete entity with Hexagonal Architecture:
 
 ```bash
-struktos new my-app
-cd my-app
+struktos generate entity Product --fields="name:string,price:number"
+# or short form
+struktos g entity Product -f "name:string,price:number"
 ```
 
-### 2. Install Dependencies
+**Generated files:**
+- `src/domain/entities/Product.entity.ts`
+- `src/domain/repositories/IProductRepository.ts`
+- `src/infrastructure/adapters/persistence/Product.repository.ts`
+
+### `struktos generate service <name>` (New!)
+
+Generate a service with handlers for HTTP or gRPC.
+
+#### gRPC Service
 
 ```bash
-npm install
+struktos generate service user --type=grpc
+# or with specific methods
+struktos g service user -t grpc -m "get,list,create,update,delete"
 ```
 
-### 3. Configure Environment
+**Generated files:**
+- `protos/user.proto` - Protocol Buffer definition
+- `src/infrastructure/adapters/grpc/user.service.grpc.ts` - Service handler
+- `src/infrastructure/adapters/grpc/user.registration.ts` - Registration example
 
-```bash
-cp .env.example .env
-# Edit .env with your settings
+**Generated proto file:**
+
+```protobuf
+syntax = "proto3";
+package user;
+
+service UserService {
+  rpc GetUser (GetUserRequest) returns (User);
+  rpc ListUsers (ListUsersRequest) returns (stream User);
+  rpc CreateUser (CreateUserRequest) returns (User);
+  rpc UpdateUser (UpdateUserRequest) returns (User);
+  rpc DeleteUser (DeleteUserRequest) returns (DeleteUserResponse);
+}
+
+message User {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  int64 created_at = 4;
+  int64 updated_at = 5;
+}
+// ... request/response messages
 ```
 
-### 4. Start Development
+**Generated handler:**
 
-```bash
-npm run dev
+```typescript
+import { RequestContext } from '@struktos/core';
+import { GrpcContextData } from '@struktos/adapter-grpc';
+
+export const userService = {
+  GetUser: (call, callback) => {
+    const ctx = RequestContext.current<GrpcContextData>();
+    const traceId = ctx?.get('traceId');
+    // Implementation...
+  },
+  // ... other methods
+};
 ```
 
-### 5. Build for Production
+#### HTTP Service
 
 ```bash
-npm run build
-npm start
+struktos generate service product --type=http
+```
+
+**Generated files:**
+- `src/infrastructure/adapters/http/product.controller.ts`
+
+## 🏗️ Project Structure
+
+Generated projects follow **Hexagonal Architecture**:
+
+```
+project/
+├── src/
+│   ├── domain/              # Business logic
+│   │   ├── entities/        # Domain entities
+│   │   ├── repositories/    # Repository interfaces
+│   │   └── services/        # Domain services
+│   ├── application/         # Application logic
+│   │   ├── use-cases/       # Use cases
+│   │   └── ports/           # Port interfaces
+│   ├── infrastructure/      # External adapters
+│   │   └── adapters/
+│   │       ├── http/        # HTTP controllers
+│   │       ├── grpc/        # gRPC handlers
+│   │       └── persistence/ # Repository implementations
+│   └── main.ts              # Entry point
+├── protos/                  # Protocol Buffers (gRPC only)
+├── tests/
+└── config/
+```
+
+## 📡 gRPC Support
+
+### main.ts (gRPC Project)
+
+```typescript
+import { StruktosApp } from '@struktos/core';
+import {
+  createGrpcAdapter,
+  createLoggingInterceptor,
+  GrpcContextData,
+} from '@struktos/adapter-grpc';
+
+async function main() {
+  const app = StruktosApp.create<GrpcContextData>({
+    name: 'my-service',
+  });
+
+  app.use(createLoggingInterceptor());
+
+  const adapter = createGrpcAdapter({
+    enableCancellation: true,
+  });
+
+  // Register services
+  await registerServices(adapter);
+
+  await app.listen(adapter, 50051);
+  console.log('gRPC server running on port 50051');
+}
+```
+
+### Registering a Service
+
+```typescript
+import { registerUserService } from './infrastructure/adapters/grpc/user.service.grpc';
+
+async function registerServices(adapter) {
+  await registerUserService(adapter, './protos/user.proto');
+}
+```
+
+## 🔧 Supported Types
+
+For entity field definitions:
+
+| Type | Example |
+|------|---------|
+| `string` | `name:string` |
+| `number` | `price:number` |
+| `boolean` | `isActive:boolean` |
+| `Date` | `createdAt:Date` |
+| `any` | `metadata:any` |
+| `unknown` | `data:unknown` |
+
+Optional fields use `?` suffix: `description:string?`
+
+## 📦 Framework Support
+
+| Framework | Type | Command |
+|-----------|------|---------|
+| Express | HTTP | `struktos new app` → Select Express |
+| Fastify | HTTP | `struktos new app` → Select Fastify |
+| NestJS | HTTP | `struktos new app` → Select NestJS |
+| **gRPC** | RPC | `struktos new app` → Select gRPC |
+
+## 🐳 Docker Support
+
+Generated projects include Docker configuration:
+
+```bash
+# Build and run
+docker-compose up -d
+
+# View logs
+docker-compose logs -f app
 ```
 
 ## 📖 Examples
 
-### Create Express App with Auth
+### Create a gRPC Microservice with User Service
 
 ```bash
-$ struktos new auth-api
+# 1. Create project
+struktos new user-service
+# Select: gRPC, PostgreSQL, Yes for Auth, Yes for Docker
 
-? Project name: auth-api
-? Choose Framework Adapter: Express (recommended)
-? Choose Persistence Layer: None (In-Memory only)
-? Include Authentication (@struktos/auth)? Yes
+# 2. Navigate to project
+cd user-service
 
-✅ Project created successfully!
+# 3. Generate user service
+struktos generate service user --type=grpc
 
-Next steps:
-   cd auth-api
-   npm install
-   npm run dev
+# 4. Install dependencies
+npm install
+
+# 5. Start development server
+npm run dev
 ```
 
-### Create Full-Stack App
+### Create an Express API with Product Entity
 
 ```bash
-$ struktos new fullstack-app
+# 1. Create project
+struktos new product-api
+# Select: Express, MongoDB, Yes for Auth, Yes for Docker
 
-? Project name: fullstack-app
-? Choose Framework Adapter: Express (recommended)
-? Choose Persistence Layer: PostgreSQL (with Prisma)
-? Include Authentication (@struktos/auth)? Yes
+# 2. Navigate to project
+cd product-api
 
-✅ Project created successfully!
+# 3. Generate product entity
+struktos generate entity Product --fields="name:string,price:number,description:string?"
 
-Next steps:
-   cd fullstack-app
-   npm install
-   npx prisma generate
-   npm run dev
+# 4. Install dependencies
+npm install
+
+# 5. Start development server
+npm run dev
 ```
 
-## 🎓 Architecture Principles
+## 🤝 Related Packages
 
-Generated projects follow these principles:
-
-### 1. Hexagonal Architecture (Ports & Adapters)
-
-- **Domain** - Core business logic (framework-independent)
-- **Application** - Use cases and application logic
-- **Infrastructure** - External adapters (HTTP, Database, etc.)
-
-### 2. Dependency Inversion
-
-- Domain doesn't depend on infrastructure
-- Infrastructure depends on domain interfaces (ports)
-
-### 3. Separation of Concerns
-
-- Each layer has a clear responsibility
-- No circular dependencies
-
-### 4. Clean Code
-
-- TypeScript for type safety
-- Consistent naming conventions
-- Example files to guide development
-
-## 🔗 Related Packages
-
-- [@struktos/core](https://www.npmjs.com/package/@struktos/core) - Context propagation
+- [@struktos/core](https://www.npmjs.com/package/@struktos/core) - Core framework
 - [@struktos/adapter-express](https://www.npmjs.com/package/@struktos/adapter-express) - Express adapter
+- [@struktos/adapter-fastify](https://www.npmjs.com/package/@struktos/adapter-fastify) - Fastify adapter
+- [@struktos/adapter-grpc](https://www.npmjs.com/package/@struktos/adapter-grpc) - gRPC adapter
 - [@struktos/auth](https://www.npmjs.com/package/@struktos/auth) - Authentication
 
 ## 📄 License
 
 MIT © Struktos.js Team
-
-## 🔗 Links
-
-- [GitHub Repository](https://github.com/struktosjs/cli)
-- [Issue Tracker](https://github.com/struktosjs/cli/issues)
-- [NPM Package](https://www.npmjs.com/package/@struktos/cli)
-
----
-
-**Built with ❤️ for enterprise Node.js development**
