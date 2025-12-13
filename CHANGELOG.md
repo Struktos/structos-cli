@@ -2,7 +2,102 @@
 
 All notable changes to `@struktos/cli` will be documented in this file.
 
-## [0.2.0] - 2024-12-11
+## [0.3.0] - 2025-12-11
+
+### 🎉 Major Release - Pure TypeScript Generators
+
+This release adds three new generators for middleware/interceptors, use cases, and gRPC clients - all using pure TypeScript classes without decorators.
+
+### Added
+
+#### `struktos generate middleware` Command (New!)
+- **Aliases**: `struktos g mw`, `struktos generate mw`
+- **Purpose**: Generate middleware/interceptor classes for the middleware pipeline
+- **Templates**:
+  - `--logging`: Comprehensive logging interceptor with structured JSON output
+  - `--timing`: Performance monitoring interceptor with configurable thresholds
+  - Default: Custom interceptor template
+
+**Generated Files:**
+```
+src/infrastructure/middleware/<name>.interceptor.ts
+```
+
+**Features:**
+- Pure TypeScript class implementing `IInterceptor`
+- RxJS-based request/response flow handling
+- Context propagation with trace ID
+- Factory function for easy instantiation
+- Pre/post processing hooks
+- Error handling with `catchError`
+
+#### `struktos generate use-case` Command (New!)
+- **Aliases**: `struktos g uc`
+- **Syntax**: `struktos generate use-case <action> --entity=<entity>`
+- **Purpose**: Generate Clean Architecture use case classes
+
+**Supported Actions:**
+- `create` - Create entity with validation
+- `get` / `find` - Retrieve entity by ID
+- `list` / `search` - Paginated list with filters
+- `update` - Update existing entity
+- `delete` - Delete entity (soft/hard)
+
+**Options:**
+- `--no-repository`: Skip repository injection
+- `--no-logger`: Skip logger injection
+- `--no-validation`: Skip validation logic
+
+**Generated Files:**
+```
+src/application/use-cases/<entity>/<action>-<entity>.use-case.ts
+```
+
+**Features:**
+- Input/Output DTOs with TypeScript interfaces
+- Constructor dependency injection
+- `execute(context, input)` pattern
+- Automatic validation logic
+- Logger integration with trace ID
+- Sensitive field sanitization
+- Factory function
+
+#### `struktos generate client` Command (New!)
+- **Syntax**: `struktos generate client <service> [--with-port]`
+- **Purpose**: Generate gRPC client adapters for microservice communication
+
+**Generated Files:**
+```
+src/infrastructure/adapters/grpc/<service>.client.adapter.ts
+src/application/ports/grpc/<service>.client.port.ts  (with --with-port)
+```
+
+**Features:**
+- Full CRUD method implementations
+- gRPC Metadata creation with context propagation
+- Trace ID, User ID, Authorization header forwarding
+- Error handling with gRPC status code mapping
+- Response mapping helpers
+- Port interface generation
+- Static `createFromProto` factory method
+- TypeScript DTOs for all operations
+
+### Changed
+- All generated code is **pure TypeScript** - no decorators required
+- Explicit constructor dependency injection
+- Interface-based contracts for all components
+- Factory functions provided for all classes
+
+### Statistics
+- New commands: 3 (`generate middleware`, `generate use-case`, `generate client`)
+- New generators: 5 (middleware, logging, timing, use-case, client)
+- New tests: 33
+- Total tests: 160
+- Lines of code added: ~2,000
+
+---
+
+## [0.2.0] - 2025-12-11
 
 ### 🎉 Major Release - gRPC Support
 
@@ -79,7 +174,7 @@ For `struktos generate service user --type=grpc`:
 
 ---
 
-## [0.1.1] - 2024-12-08
+## [0.1.1] - 2025-12-08
 
 ### Added
 - `struktos generate entity` command
@@ -90,7 +185,7 @@ For `struktos generate service user --type=grpc`:
 
 ---
 
-## [0.1.0] - 2024-12-07
+## [0.1.0] - 2025-12-07
 
 ### Added
 - Initial release
@@ -106,16 +201,17 @@ For `struktos generate service user --type=grpc`:
 
 ## Roadmap
 
-### 0.3.0 (Planned)
-- [ ] `struktos generate middleware` command
-- [ ] `struktos generate use-case` command
-- [ ] Proto file validation
-- [ ] gRPC client generation
-
 ### 0.4.0 (Planned)
+- [ ] `struktos generate repository` command
+- [ ] Proto file validation
+- [ ] gRPC streaming client support
+- [ ] Event sourcing templates
+
+### 0.5.0 (Planned)
 - [ ] `struktos deploy` command
 - [ ] Kubernetes manifest generation
 - [ ] CI/CD pipeline templates
+- [ ] Health check and metrics integration
 
 ---
 

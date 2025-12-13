@@ -1,7 +1,8 @@
 /**
  * @struktos/cli - Generate Command
  * 
- * Generate various project components including entities and services.
+ * Generate various project components including entities, services,
+ * middleware/interceptors, use cases, and gRPC clients.
  */
 
 import { Command } from 'commander';
@@ -13,6 +14,7 @@ import {
   parseFields,
   validateEntityName,
   toPascalCase,
+  toCamelCase,
   toKebabCase,
 } from '../utils/fieldParser';
 import { promptServiceType, promptGrpcMethods } from '../utils/prompts';
@@ -22,6 +24,16 @@ import {
   generateGrpcServiceHandler,
   generateServiceRegistration,
 } from '../generators/grpcGenerator';
+import {
+  generateMiddleware,
+  generateLoggingMiddleware,
+  generateTimingMiddleware,
+} from '../generators/middlewareGenerator';
+import { generateUseCase } from '../generators/useCaseGenerator';
+import {
+  generateGrpcClientAdapter,
+  generateClientPortInterface,
+} from '../generators/clientGenerator';
 import { FieldDefinition, ServiceType } from '../types';
 
 /**
@@ -59,6 +71,61 @@ export function createGenerateCommand(): Command {
         await generateService(name, options.type as ServiceType, options.methods);
       } catch (error) {
         console.error(chalk.red('\n❌ Error generating service:'), error);
+        process.exit(1);
+      }
+    });
+
+  // Middleware/Interceptor subcommand (NEW v0.3.0)
+  generate
+    .command('middleware')
+    .alias('mw')
+    .argument('<n>', 'Name of the middleware/interceptor')
+    .option('--logging', 'Generate a logging interceptor template')
+    .option('--timing', 'Generate a timing interceptor template')
+    .description('Generate a middleware/interceptor class')
+    .action(async (name: string, options: { logging?: boolean; timing?: boolean }) => {
+      try {
+        await generateMiddlewareFile(name, options);
+      } catch (error) {
+        console.error(chalk.red('\n❌ Error generating middleware:'), error);
+        process.exit(1);
+      }
+    });
+
+  // Use Case subcommand (NEW v0.3.0)
+  generate
+    .command('use-case')
+    .alias('uc')
+    .argument('<action>', 'Action name (e.g., create, get, list, update, delete)')
+    .requiredOption('-e, --entity <entity>', 'Entity name for the use case')
+    .option('--no-repository', 'Skip repository injection')
+    .option('--no-logger', 'Skip logger injection')
+    .option('--no-validation', 'Skip validation logic')
+    .description('Generate a use case class')
+    .action(async (action: string, options: { entity: string; repository?: boolean; logger?: boolean; validation?: boolean }) => {
+      try {
+        await generateUseCaseFile(action, options.entity, {
+          withRepository: options.repository !== false,
+          withLogger: options.logger !== false,
+          withValidation: options.validation !== false,
+        });
+      } catch (error) {
+        console.error(chalk.red('\n❌ Error generating use case:'), error);
+        process.exit(1);
+      }
+    });
+
+  // gRPC Client subcommand (NEW v0.3.0)
+  generate
+    .command('client')
+    .argument('<service>', 'Name of the remote service')
+    .option('--with-port', 'Also generate the port interface')
+    .description('Generate a gRPC client adapter')
+    .action(async (service: string, options: { withPort?: boolean }) => {
+      try {
+        await generateClientFile(service, options.withPort);
+      } catch (error) {
+        console.error(chalk.red('\n❌ Error generating client:'), error);
         process.exit(1);
       }
     });
@@ -467,4 +534,241 @@ ${methodImplementations}
   }
 }
 `;
+}
+
+
+// ==================== New Generators (v0.3.0) ====================
+
+/**
+ * Generate middleware/interceptor file
+ */
+async function generateMiddlewareFile(
+  name: string,
+  options: { logging?: boolean; timing?: boolean }
+): Promise<void> {
+  console.log(chalk.bold.cyan('\n🔧 Struktos Code Generator - Middleware/Interceptor\n'));
+
+  // Validate
+  validateEntityName(name);
+
+  // Check if in Struktos project
+  if (!(await isStruktosProject())) {
+    console.log(chalk.red('❌ Not a Struktos project!'));
+    console.log(chalk.yellow('   Run this command in a project created with "struktos new"\n'));
+    process.exit(1);
+  }
+
+  const className = toPascalCase(name);
+  const kebabName = toKebabCase(name);
+
+  console.log(chalk.bold('📋 Generation Plan:'));
+  console.log(`   Interceptor: ${chalk.cyan(className + 'Interceptor')}`);
+  if (options.logging) console.log(`   Template: ${chalk.cyan('Logging')}`);
+  if (options.timing) console.log(`   Template: ${chalk.cyan('Timing')}`);
+  console.log();
+
+  const spinner = ora('Generating middleware files...').start();
+
+  try {
+    // Ensure directory exists
+    await fs.ensureDir('src/infrastructure/middleware');
+
+    // Determine which template to use
+    let content: string;
+    let fileName: string;
+
+    if (options.logging) {
+      content = generateLoggingMiddleware();
+      fileName = 'logging.interceptor.ts';
+    } else if (options.timing) {
+      content = generateTimingMiddleware();
+      fileName = 'timing.interceptor.ts';
+    } else {
+      content = generateMiddleware(name);
+      fileName = `${kebabName}.interceptor.ts`;
+    }
+
+    // Write file
+    spinner.text = 'Writing interceptor file...';
+    await writeFile(
+      path.join('src/infrastructure/middleware', fileName),
+      content
+    );
+
+    spinner.succeed('Generated middleware file');
+
+    console.log();
+    console.log(chalk.green.bold('✅ Middleware generated successfully!'));
+    console.log();
+    console.log(chalk.bold('📁 Generated file:'));
+    console.log(chalk.gray(`   src/infrastructure/middleware/${fileName}`));
+    console.log();
+    console.log(chalk.bold('📝 Usage:'));
+    console.log();
+    console.log(chalk.cyan(`   import { ${className}Interceptor } from './infrastructure/middleware/${kebabName}.interceptor';`));
+    console.log();
+    console.log(chalk.cyan(`   app.use(new ${className}Interceptor());`));
+    console.log();
+
+  } catch (error) {
+    spinner.fail('Failed to generate middleware');
+    throw error;
+  }
+}
+
+/**
+ * Generate use case file
+ */
+async function generateUseCaseFile(
+  action: string,
+  entityName: string,
+  options: {
+    withRepository?: boolean;
+    withLogger?: boolean;
+    withValidation?: boolean;
+  }
+): Promise<void> {
+  console.log(chalk.bold.cyan('\n🔧 Struktos Code Generator - Use Case\n'));
+
+  // Validate
+  validateEntityName(action);
+  validateEntityName(entityName);
+
+  // Check if in Struktos project
+  if (!(await isStruktosProject())) {
+    console.log(chalk.red('❌ Not a Struktos project!'));
+    console.log(chalk.yellow('   Run this command in a project created with "struktos new"\n'));
+    process.exit(1);
+  }
+
+  const actionPascal = toPascalCase(action);
+  const entityPascal = toPascalCase(entityName);
+  const kebabAction = toKebabCase(action);
+  const kebabEntity = toKebabCase(entityName);
+
+  const className = `${actionPascal}${entityPascal}UseCase`;
+
+  console.log(chalk.bold('📋 Generation Plan:'));
+  console.log(`   Use Case: ${chalk.cyan(className)}`);
+  console.log(`   Action: ${chalk.cyan(action)}`);
+  console.log(`   Entity: ${chalk.cyan(entityName)}`);
+  console.log(`   Options:`);
+  console.log(`      - Repository: ${options.withRepository ? chalk.green('Yes') : chalk.gray('No')}`);
+  console.log(`      - Logger: ${options.withLogger ? chalk.green('Yes') : chalk.gray('No')}`);
+  console.log(`      - Validation: ${options.withValidation ? chalk.green('Yes') : chalk.gray('No')}`);
+  console.log();
+
+  const spinner = ora('Generating use case files...').start();
+
+  try {
+    // Ensure directory exists
+    const useCaseDir = path.join('src/application/use-cases', kebabEntity);
+    await fs.ensureDir(useCaseDir);
+
+    // Generate content
+    const content = generateUseCase(action, entityName, options);
+
+    // Write file
+    const fileName = `${kebabAction}-${kebabEntity}.use-case.ts`;
+    spinner.text = 'Writing use case file...';
+    await writeFile(path.join(useCaseDir, fileName), content);
+
+    spinner.succeed('Generated use case file');
+
+    console.log();
+    console.log(chalk.green.bold('✅ Use Case generated successfully!'));
+    console.log();
+    console.log(chalk.bold('📁 Generated file:'));
+    console.log(chalk.gray(`   src/application/use-cases/${kebabEntity}/${fileName}`));
+    console.log();
+    console.log(chalk.bold('📝 Usage:'));
+    console.log();
+    console.log(chalk.cyan(`   import { ${className} } from './application/use-cases/${kebabEntity}/${fileName.replace('.ts', '')}';`));
+    console.log();
+    console.log(chalk.cyan(`   const useCase = new ${className}(repository, logger);`));
+    console.log(chalk.cyan(`   const result = await useCase.execute(context, input);`));
+    console.log();
+
+  } catch (error) {
+    spinner.fail('Failed to generate use case');
+    throw error;
+  }
+}
+
+/**
+ * Generate gRPC client adapter file
+ */
+async function generateClientFile(
+  serviceName: string,
+  withPort?: boolean
+): Promise<void> {
+  console.log(chalk.bold.cyan('\n🔧 Struktos Code Generator - gRPC Client\n'));
+
+  // Validate
+  validateEntityName(serviceName);
+
+  // Check if in Struktos project
+  if (!(await isStruktosProject())) {
+    console.log(chalk.red('❌ Not a Struktos project!'));
+    console.log(chalk.yellow('   Run this command in a project created with "struktos new"\n'));
+    process.exit(1);
+  }
+
+  const className = toPascalCase(serviceName);
+  const kebabName = toKebabCase(serviceName);
+
+  console.log(chalk.bold('📋 Generation Plan:'));
+  console.log(`   Client: ${chalk.cyan(className + 'ClientAdapter')}`);
+  console.log(`   Port Interface: ${withPort ? chalk.green('Yes') : chalk.gray('No')}`);
+  console.log();
+
+  const spinner = ora('Generating client files...').start();
+
+  try {
+    // Ensure directories exist
+    await fs.ensureDir('src/infrastructure/adapters/grpc');
+
+    // Generate client adapter
+    spinner.text = 'Generating client adapter...';
+    const adapterContent = generateGrpcClientAdapter(serviceName);
+    await writeFile(
+      path.join('src/infrastructure/adapters/grpc', `${kebabName}.client.adapter.ts`),
+      adapterContent
+    );
+    spinner.succeed('Generated client adapter');
+
+    // Generate port interface if requested
+    if (withPort) {
+      await fs.ensureDir('src/application/ports/grpc');
+      
+      spinner.start('Generating port interface...');
+      const portContent = generateClientPortInterface(serviceName);
+      await writeFile(
+        path.join('src/application/ports/grpc', `${kebabName}.client.port.ts`),
+        portContent
+      );
+      spinner.succeed('Generated port interface');
+    }
+
+    console.log();
+    console.log(chalk.green.bold('✅ gRPC Client generated successfully!'));
+    console.log();
+    console.log(chalk.bold('📁 Generated files:'));
+    console.log(chalk.gray(`   src/infrastructure/adapters/grpc/${kebabName}.client.adapter.ts`));
+    if (withPort) {
+      console.log(chalk.gray(`   src/application/ports/grpc/${kebabName}.client.port.ts`));
+    }
+    console.log();
+    console.log(chalk.bold('📝 Usage:'));
+    console.log();
+    console.log(chalk.cyan(`   import { ${className}ClientAdapter } from './infrastructure/adapters/grpc/${kebabName}.client.adapter';`));
+    console.log();
+    console.log(chalk.cyan(`   const client = new ${className}ClientAdapter(grpcClientFactory);`));
+    console.log(chalk.cyan(`   const result = await client.get(context, 'some-id');`));
+    console.log();
+
+  } catch (error) {
+    spinner.fail('Failed to generate client');
+    throw error;
+  }
 }

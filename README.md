@@ -139,6 +139,139 @@ struktos generate service product --type=http
 **Generated files:**
 - `src/infrastructure/adapters/http/product.controller.ts`
 
+### `struktos generate middleware <n>` (New in v0.3.0!)
+
+Generate middleware/interceptor classes with pure TypeScript.
+
+```bash
+# Custom middleware
+struktos generate middleware auth
+struktos g mw requestValidator
+
+# Logging template
+struktos g mw logging --logging
+
+# Timing/performance template
+struktos g mw timing --timing
+```
+
+**Generated files:**
+- `src/infrastructure/middleware/<n>.interceptor.ts`
+
+**Example generated interceptor:**
+
+```typescript
+import { RequestContext, IInterceptor, NextFn } from '@struktos/core';
+import { Observable, tap, catchError } from 'rxjs';
+
+export class AuthInterceptor implements IInterceptor {
+  intercept(context: RequestContext, next: NextFn): Observable<any> {
+    const traceId = context.get('traceId');
+    console.log(`[AuthInterceptor] Processing request ${traceId}`);
+    
+    return next().pipe(
+      tap(() => console.log(`[AuthInterceptor] Request completed`)),
+      catchError((error) => { throw error; })
+    );
+  }
+}
+```
+
+### `struktos generate use-case <action>` (New in v0.3.0!)
+
+Generate use case classes following Clean Architecture patterns.
+
+```bash
+# Create use case
+struktos generate use-case create --entity=user
+struktos g uc create -e user
+
+# Get use case
+struktos g uc get -e product
+
+# List use case
+struktos g uc list -e order
+
+# With options
+struktos g uc delete -e item --no-logger --no-validation
+```
+
+**Options:**
+- `-e, --entity <entity>`: Entity name (required)
+- `--no-repository`: Skip repository injection
+- `--no-logger`: Skip logger injection  
+- `--no-validation`: Skip validation logic
+
+**Generated files:**
+- `src/application/use-cases/<entity>/<action>-<entity>.use-case.ts`
+
+**Example generated use case:**
+
+```typescript
+import { RequestContext, ILogger } from '@struktos/core';
+import { IUserRepository } from '../../domain/repositories/IUserRepository';
+
+export class CreateUserUseCase {
+  constructor(
+    private readonly userRepository: IUserRepository,
+    private readonly logger: ILogger,
+  ) {}
+
+  async execute(context: RequestContext, input: CreateUserInput): Promise<CreateUserOutput> {
+    this.logger.info(`Starting user creation`, { traceId: context.get('traceId') });
+    
+    this.validate(input);
+    const user = await this.userRepository.create(input);
+    
+    return { user };
+  }
+}
+```
+
+### `struktos generate client <service>` (New in v0.3.0!)
+
+Generate gRPC client adapters for microservice communication.
+
+```bash
+# Generate client adapter
+struktos generate client user-service
+
+# Also generate port interface
+struktos g client order-service --with-port
+```
+
+**Options:**
+- `--with-port`: Also generate the port interface
+
+**Generated files:**
+- `src/infrastructure/adapters/grpc/<service>.client.adapter.ts`
+- `src/application/ports/grpc/<service>.client.port.ts` (with `--with-port`)
+
+**Example generated client adapter:**
+
+```typescript
+import { RequestContext } from '@struktos/core';
+import { Metadata } from '@grpc/grpc-js';
+
+export class UserServiceClientAdapter implements IUserServiceClientPort {
+  constructor(private readonly grpcClientFactory: IGrpcClientFactory) {
+    this.userService = this.grpcClientFactory.getService('UserService');
+  }
+
+  async get(context: RequestContext, id: string): Promise<UserResponse> {
+    const metadata = this.createMetadata(context); // Propagates trace ID
+    return this.userService.GetUser({ id }, metadata);
+  }
+
+  private createMetadata(context: RequestContext): Metadata {
+    const metadata = new Metadata();
+    metadata.set('x-trace-id', context.get('traceId'));
+    metadata.set('x-user-id', context.get('userId'));
+    return metadata;
+  }
+}
+```
+
 ## 🏗️ Project Structure
 
 Generated projects follow **Hexagonal Architecture**:

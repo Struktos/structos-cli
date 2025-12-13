@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * @struktos/cli v0.2.0
+ * @struktos/cli v0.3.0
  * 
  * CLI tool for creating and managing Struktos.js projects
  * with HTTP and gRPC support.
@@ -17,7 +17,7 @@ import chalk from 'chalk';
 import { createNewCommand } from './commands/new';
 import { createGenerateCommand } from './commands/generate';
 
-const VERSION = '0.2.0';
+const VERSION = '0.3.0';
 
 // ASCII Art Banner
 const banner = `
@@ -56,6 +56,17 @@ program.on('--help', () => {
   console.log('');
   console.log(chalk.cyan('  # Generate a gRPC service'));
   console.log('  $ struktos generate service user --type=grpc');
+  console.log('');
+  console.log(chalk.cyan('  # Generate a middleware/interceptor'));
+  console.log('  $ struktos generate middleware auth');
+  console.log('  $ struktos g mw logging --logging');
+  console.log('');
+  console.log(chalk.cyan('  # Generate a use case'));
+  console.log('  $ struktos generate use-case create --entity=user');
+  console.log('  $ struktos g uc delete -e product');
+  console.log('');
+  console.log(chalk.cyan('  # Generate a gRPC client adapter'));
+  console.log('  $ struktos generate client user-service --with-port');
   console.log('');
   console.log(chalk.bold('Documentation:'));
   console.log(chalk.gray('  https://github.com/struktosjs/cli'));
